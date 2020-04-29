@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 from esn import activation as A
+from esn.initialization import WeightInitializer
 
 
 class ESNCellBase(nn.Module):
@@ -10,7 +11,7 @@ class ESNCellBase(nn.Module):
     """
     __constants__ = ['input_size', 'hidden_size', 'bias']
 
-    def __init__(self, input_size, hidden_size, bias, initialization=None, num_chunks=1):
+    def __init__(self, input_size, hidden_size, bias, initializer: WeightInitializer = None, num_chunks=1):
         super(ESNCellBase, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -23,7 +24,7 @@ class ESNCellBase(nn.Module):
         else:
             self.register_parameter('bias_ih', None)
             self.register_parameter('bias_hh', None)
-        self.initialization = initialization
+        self.initializer = initializer
         self.reset_parameters()
 
     def extra_repr(self):
@@ -53,17 +54,19 @@ class ESNCellBase(nn.Module):
                     hidden_label, hx.size(1), self.hidden_size))
 
     def reset_parameters(self):
-        # todo odroznic bias od wag?
-        for weight in self.parameters():
-            self.initialization(weight, self.hidden_size)
+        self.initializer.init_weight_ih(self.weight_ih, self.hidden_size)
+        self.initializer.init_weight_hh(self.weight_hh, self.hidden_size)
+        if self.bias:
+            self.initializer.init_bias_ih(self.bias_ih, self.hidden_size)
+            self.initializer.init_bias_ih(self.bias_hh, self.hidden_size)
 
 
 class ESNCell(ESNCellBase):
     # todo type annotations
     __constants__ = ['input_size', 'hidden_size', 'bias', 'activation']
 
-    def __init__(self, input_size, hidden_size, bias=True, initialization=None, activation=A.tanh):
-        super(ESNCell, self).__init__(input_size, hidden_size, bias, initialization=initialization, num_chunks=1)
+    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None, activation=A.tanh):
+        super(ESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=1)
         self.activation = activation
         self.hx = None
 
@@ -83,18 +86,19 @@ class ESNCell(ESNCellBase):
 
 
 class DeepESNCell(nn.Module):
-    def __init__(self, input_size, hidden_size, bias=True, initialization=None, num_layers=1, activation=A.tanh):
+    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None, num_layers=1,
+                 activation=A.tanh):
         super().__init__()
         self.activation = activation
-        self.layers = [ESNCell(input_size, hidden_size, bias, initialization, activation)] + \
-                      [ESNCell(hidden_size, hidden_size, bias, initialization, activation) for i in
+        self.layers = [ESNCell(input_size, hidden_size, bias, initializer, activation)] + \
+                      [ESNCell(hidden_size, hidden_size, bias, initializer, activation) for i in
                        range(1, num_layers)]
         # self.hidden_states = [
         #     torch.zeros(input_size, hidden_size, requires_grad=False)]  # todo check if good dimension for input
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.initialization = initialization  # todo generalize?
+        self.initializer = initializer  # todo generalize?
         self.activation = activation  # todo generalize?
 
     def forward(self, input):
@@ -109,7 +113,7 @@ class DeepESNCell(nn.Module):
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
             # self.hidden_states = new_hidden_states  # todo potrzebne w ogole
-            result[i, :] = torch.cat(new_hidden_states, axis=1) # moze to tu?
+            result[i, :] = torch.cat(new_hidden_states, axis=1)  # moze to tu?
         return result
 
     def washout(self, input):
@@ -168,7 +172,7 @@ class DeepESN(nn.Module):
             self.readout.fit(mapped_input, target)
 
     def forward(self, input):
-        self.initial_state=False
+        self.initial_state = False
         mapped_input = self.reservoir(input)
 
         return self.readout(mapped_input)
