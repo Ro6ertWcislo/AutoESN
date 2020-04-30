@@ -1,6 +1,7 @@
 import torch
-from torch import nn
+from torch import nn, Tensor
 from esn import activation as A
+from esn.activation import Activation
 from esn.initialization import WeightInitializer
 
 
@@ -65,15 +66,15 @@ class ESNCell(ESNCellBase):
     # todo type annotations
     __constants__ = ['input_size', 'hidden_size', 'bias', 'activation']
 
-    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None, activation=A.tanh):
+    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None,
+                 activation: Activation = A.tanh()):
         super(ESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=1)
         self.activation = activation
         self.hx = None
 
-    def forward(self, input):
-        # type: (Tensor, Optional[Tensor]) -> Tensor
+    def forward(self, input: Tensor):
         self.check_forward_input(input)
-        if self.hx is None:
+        if self.hx is None:  # todo unnecessary lazy init
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=False)
         self.check_forward_hidden(input, self.hx, '')
@@ -87,14 +88,12 @@ class ESNCell(ESNCellBase):
 
 class DeepESNCell(nn.Module):
     def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None, num_layers=1,
-                 activation=A.tanh):
+                 activation: Activation = A.tanh()):
         super().__init__()
         self.activation = activation
         self.layers = [ESNCell(input_size, hidden_size, bias, initializer, activation)] + \
                       [ESNCell(hidden_size, hidden_size, bias, initializer, activation) for i in
                        range(1, num_layers)]
-        # self.hidden_states = [
-        #     torch.zeros(input_size, hidden_size, requires_grad=False)]  # todo check if good dimension for input
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -102,18 +101,15 @@ class DeepESNCell(nn.Module):
         self.activation = activation  # todo generalize?
 
     def forward(self, input):
-        # todo obsługa transient
         result = torch.Tensor(input.size(0), len(self.layers) * self.hidden_size)
 
-        # todo 1.  transient dodać, 2. debug czy dalej nie działa, sprawdzic inicjalizacje, ogarnac washout i prepare costam
         for i in range(input.size(0)):
             cell_input = input[i]
             new_hidden_states = []
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
-            # self.hidden_states = new_hidden_states  # todo potrzebne w ogole
-            result[i, :] = torch.cat(new_hidden_states, axis=1)  # moze to tu?
+            result[i, :] = torch.cat(new_hidden_states, axis=1)
         return result
 
     def washout(self, input):
@@ -154,7 +150,7 @@ class SVDReadout(nn.Module):
 
 class DeepESN(nn.Module):
     def __init__(self, input_size, hidden_size, output_dim=1, bias=True, initialization=None, num_layers=1,
-                 activation=A.tanh, transient=30, reglarization=1):
+                 activation: Activation = A.tanh(leaky_rate=0.7), transient=30, reglarization=1):
         super(DeepESN, self).__init__()
         self.transient = transient
         self.initial_state = True

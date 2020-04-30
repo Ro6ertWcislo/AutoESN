@@ -1,30 +1,42 @@
+from typing import Optional
+
 import torch
-from torch.nn import functional as F
+from torch import nn, Tensor
+from utils import math as M
+from utils.types import ActivationFunction
 
 
-# todo implement as classes
+class Activation(nn.Module):
+    def __init__(self, activation_function: ActivationFunction, leaky_rate: float):
+        super().__init__()
+        self.leaky_rate = leaky_rate
+        self.activation_function = activation_function
 
-def linear(input, hx, weight_ih, weight_hh, bias_ih, bias_hh): # todo make it bias aware
-    return F.linear(input, weight_ih, bias_ih) + F.linear(hx, weight_hh, bias_hh)
+    def forward(self, input: Tensor, hx_prev: Tensor, weight_ih: Tensor, weight_hh: Tensor, bias_ih: Optional[Tensor],
+                bias_hh: Optional[Tensor]) -> Tensor:
+        pre_activation = M.linear(input, hx_prev, weight_ih, weight_hh, bias_ih, bias_hh)
+        hx_next = self.activation_function(pre_activation)
+        # leaky rate == 1.0 means no leaky_rate at all. hx_prev gets zeroed
+        return M.leaky(hx_prev=hx_prev, hx_next=hx_next, leaky_rate=self.leaky_rate)
 
 
-def leaky(leaky_rate, hx_prev, hx_next):
-    return (1 - leaky_rate) * hx_prev + leaky_rate * hx_next
+def tanh(leaky_rate: float = 1.0) -> Activation:
+    return Activation(activation_function=torch.tanh, leaky_rate=leaky_rate)
 
 
-def tanh(input, hx, weight_ih, weight_hh, bias_ih, bias_hh):
-    return 0.7*hx + 0.3* torch.tanh(
-        linear(input, hx, weight_ih, weight_hh, bias_ih, bias_hh)
-    )
+def relu(leaky_rate: float = 1.0) -> Activation:
+    return Activation(activation_function=torch.relu, leaky_rate=leaky_rate)
 
-def SelfReg(input, hx, weight_ih, weight_hh, bias_ih, bias_hh, Sr=0.9):
-    return Sr * spectral_norm(
-        linear(input, hx, weight_ih, weight_hh, bias_ih, bias_hh)
-    )
 
-# todo add leaky implementations
+def linear(leaky_rate: float = 1.0) -> Activation:
+    def id(input: Tensor) -> Tensor:
+        return input
 
-def spectral_norm(tensor):
-    u, s, v = torch.svd(tensor, compute_uv=False)
-    norm = s[0]  # max eigenvalue is on 1 place
-    return tensor / norm
+    return Activation(activation_function=id, leaky_rate=leaky_rate)
+
+
+def self_normalizing(leaky_rate: float = 1.0, spectral_radius: float = 0.9) -> Activation:
+    def activation_function(input: Tensor) -> Tensor:
+        return spectral_radius * M.spectral_norm(input)
+
+    return Activation(activation_function=activation_function, leaky_rate=leaky_rate)
