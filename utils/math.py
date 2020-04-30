@@ -1,7 +1,8 @@
-import torch
-from torch.nn import functional as F
-from torch import Tensor
 from typing import Optional
+
+import torch
+from torch import Tensor
+from torch.nn import functional as F
 
 
 def spectral_norm(tensor):

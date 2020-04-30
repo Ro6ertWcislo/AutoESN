@@ -2,6 +2,7 @@ from typing import Optional
 
 import torch
 from torch import nn, Tensor
+
 from utils import math as M
 from utils.types import ActivationFunction
 

@@ -1,5 +1,6 @@
 import torch
 from torch import nn, Tensor
+
 from esn import activation as A
 from esn.activation import Activation
 from esn.initialization import WeightInitializer
@@ -56,7 +57,7 @@ class ESNCellBase(nn.Module):
 
     def reset_parameters(self):
         self.weight_ih[:] = self.initializer.init_weight_ih(self.weight_ih)
-        self.weight_hh[:] =self.initializer.init_weight_hh(self.weight_hh)
+        self.weight_hh[:] = self.initializer.init_weight_hh(self.weight_hh)
         if self.bias:
             self.bias_ih[:] = self.initializer.init_bias_ih(self.bias_ih)
             self.bias_hh[:] = self.initializer.init_bias_ih(self.bias_hh)

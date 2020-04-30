@@ -1,12 +1,10 @@
-from typing import List, Tuple
+from typing import List
 
 import torch.nn
+from torch import Tensor
 
 from utils.math import spectral_norm
 from utils.types import Initializer
-from torch import Tensor
-
-from functools import reduce
 
 
 def _scale(factor: float = 1.0) -> Initializer:
