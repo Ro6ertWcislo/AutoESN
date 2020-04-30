@@ -14,7 +14,7 @@ print(stock_loader()[0].size())
 print(stock_loader()[1].size())
 X,X_test,y,y_test = stock_loader()
 X,X_test,y,y_test = X - torch.mean(X),X_test-torch.mean(X_test),y-torch.mean(y),y_test-torch.mean(y_test)
-esn = DeepESN(1,365,initialization=WeightInitializer(),num_layers=3,activation=A.tanh,transient=365)
+esn = DeepESN(1,365,initialization=WeightInitializer(),num_layers=3,bias=False,activation=A.tanh(leaky_rate=0.9),transient=365)
 # print(esn(X).size())
 esn.fit(X,y)
 

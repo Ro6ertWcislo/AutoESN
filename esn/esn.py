@@ -55,11 +55,11 @@ class ESNCellBase(nn.Module):
                     hidden_label, hx.size(1), self.hidden_size))
 
     def reset_parameters(self):
-        self.initializer.init_weight_ih(self.weight_ih, self.hidden_size)
-        self.initializer.init_weight_hh(self.weight_hh, self.hidden_size)
+        self.weight_ih[:] = self.initializer.init_weight_ih(self.weight_ih)
+        self.weight_hh[:] =self.initializer.init_weight_hh(self.weight_hh)
         if self.bias:
-            self.initializer.init_bias_ih(self.bias_ih, self.hidden_size)
-            self.initializer.init_bias_ih(self.bias_hh, self.hidden_size)
+            self.bias_ih[:] = self.initializer.init_bias_ih(self.bias_ih)
+            self.bias_hh[:] = self.initializer.init_bias_ih(self.bias_hh)
 
 
 class ESNCell(ESNCellBase):
