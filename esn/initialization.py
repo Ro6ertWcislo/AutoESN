@@ -1,21 +1,11 @@
-import abc
-
 import torch.nn
 
 from utils.math import spectral_norm
+from utils.types import Initializer
 
 
-# todo refactor from decorators into builder-like flow?
-
-class ConcreteWeightInitializer(abc.ABC):
-
-    @abc.abstractmethod
-    def __call__(self, weight, hidden_size):
-        pass
-
-
-class Scale(ConcreteWeightInitializer):
-    def __init__(self, initializer: ConcreteWeightInitializer, factor: float = 1):
+class Scale(object):
+    def __init__(self, initializer: Initializer, factor: float = 1):
         self.inner_initializer = initializer
         self.factor = factor
 
@@ -25,8 +15,8 @@ class Scale(ConcreteWeightInitializer):
             weight[:] = weight * self.factor
 
 
-class Normalize(ConcreteWeightInitializer):
-    def __init__(self, initializer: ConcreteWeightInitializer):
+class Normalize(object):
+    def __init__(self, initializer: Initializer):
         self.inner_initializer = initializer
 
     def __call__(self, weight, hidden_size):
@@ -35,8 +25,8 @@ class Normalize(ConcreteWeightInitializer):
             weight[:] = spectral_norm(weight)
 
 
-class Sparse(ConcreteWeightInitializer):
-    def __init__(self, initializer: ConcreteWeightInitializer, density: float = 1):
+class Sparse(object):
+    def __init__(self, initializer: Initializer, density: float = 1):
         self.inner_initializer = initializer
         self.density = density
 
@@ -47,7 +37,7 @@ class Sparse(ConcreteWeightInitializer):
             weight[:] = weight * zero_mask
 
 
-class Uniform(ConcreteWeightInitializer):
+class Uniform(object):
     def __init__(self, min: int = -1, max: int = 1):
         self.min = min
         self.max = max
@@ -56,12 +46,12 @@ class Uniform(ConcreteWeightInitializer):
         torch.nn.init.uniform_(weight, self.min, self.max)
 
 
-class Xavier(ConcreteWeightInitializer):
+class Xavier(object):
     def __call__(self, weight, hidden_size):
         torch.nn.init.xavier_uniform_(weight)
 
 
-class SpectralNoisy(ConcreteWeightInitializer):
+class SpectralNoisy(object):
     def __init__(self, spectral_radius: float = 0.9, noise_magnitude: float = 0.2):
         self.spectral_radius = spectral_radius
         self.noise_magnitude = noise_magnitude
@@ -77,7 +67,7 @@ class SpectralNoisy(ConcreteWeightInitializer):
             weight[:] = w_hh
 
 
-class DefaultHidden(ConcreteWeightInitializer):
+class DefaultHidden(object):
     def __init__(self, density=0.1, spectral_radius=0.9):
         self.stacked_initializer = \
             Scale(
@@ -93,10 +83,10 @@ class DefaultHidden(ConcreteWeightInitializer):
 
 class WeightInitializer(object):
     def __init__(self,
-                 weight_ih_init: ConcreteWeightInitializer = Uniform(),
-                 weight_hh_init: ConcreteWeightInitializer = DefaultHidden(),
-                 bias_ih_init: ConcreteWeightInitializer = Uniform(),
-                 bias_hh_init: ConcreteWeightInitializer = Uniform()):
+                 weight_ih_init: Initializer = Uniform(),
+                 weight_hh_init: Initializer = DefaultHidden(),
+                 bias_ih_init: Initializer = Uniform(),
+                 bias_hh_init: Initializer = Uniform()):
         self.weight_ih_init = weight_ih_init
         self.weight_hh_init = weight_hh_init
         self.bias_ih_init = bias_ih_init
