@@ -13,16 +13,18 @@ class ESNCellBase(nn.Module):
     """
     __constants__ = ['input_size', 'hidden_size', 'bias']
 
-    def __init__(self, input_size, hidden_size, bias, initializer: WeightInitializer = None, num_chunks=1):
+    def __init__(self, input_size: int, hidden_size: int, bias: bool,
+                 initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
+                 requires_grad: bool = False):
         super(ESNCellBase, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.weight_ih = nn.Parameter(torch.Tensor(num_chunks * hidden_size, input_size))
-        self.weight_hh = nn.Parameter(torch.Tensor(num_chunks * hidden_size, hidden_size))
+        self.weight_ih = nn.Parameter(torch.Tensor(num_chunks * hidden_size, input_size), requires_grad=requires_grad)
+        self.weight_hh = nn.Parameter(torch.Tensor(num_chunks * hidden_size, hidden_size), requires_grad=requires_grad)
         if bias:
-            self.bias_ih = nn.Parameter(torch.Tensor(num_chunks * hidden_size))
-            self.bias_hh = nn.Parameter(torch.Tensor(num_chunks * hidden_size))
+            self.bias_ih = nn.Parameter(torch.Tensor(num_chunks * hidden_size), requires_grad=requires_grad)
+            self.bias_hh = nn.Parameter(torch.Tensor(num_chunks * hidden_size), requires_grad=requires_grad)
         else:
             self.register_parameter('bias_ih', None)
             self.register_parameter('bias_hh', None)
@@ -37,14 +39,13 @@ class ESNCellBase(nn.Module):
             s += ', nonlinearity={nonlinearity}'
         return s.format(**self.__dict__)
 
-    def check_forward_input(self, input):
+    def check_forward_input(self, input: Tensor):
         if input.size(1) != self.input_size:
             raise RuntimeError(
                 "input has inconsistent input_size: got {}, expected {}".format(
                     input.size(1), self.input_size))
 
-    def check_forward_hidden(self, input, hx, hidden_label=''):
-        # type: (Tensor, Tensor, str) -> None
+    def check_forward_hidden(self, input: Tensor, hx: Tensor, hidden_label: str = ''):
         if input.size(0) != hx.size(0):
             raise RuntimeError(
                 "Input batch size {} doesn't match hidden{} batch size {}".format(
@@ -67,17 +68,20 @@ class ESNCell(ESNCellBase):
     # todo type annotations
     __constants__ = ['input_size', 'hidden_size', 'bias', 'activation']
 
-    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None,
-                 activation: Activation = A.tanh()):
-        super(ESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=1)
+    def __init__(self, input_size: int, hidden_size: int, bias: bool = True,
+                 initializer: WeightInitializer = WeightInitializer(),
+                 activation: Activation = A.tanh(), requires_grad: bool = False):
+        super(ESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=1,
+                                      requires_grad=requires_grad)
+        self.requires_grad = requires_grad
         self.activation = activation
         self.hx = None
 
-    def forward(self, input: Tensor):
+    def forward(self, input: Tensor) -> Tensor:
         self.check_forward_input(input)
-        if self.hx is None:  # todo unnecessary lazy init
+        if self.hx is None:
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
-                                  requires_grad=False)
+                                  requires_grad=self.requires_grad)
         self.check_forward_hidden(input, self.hx, '')
         self.hx = self.activation(
             input, self.hx,
@@ -88,20 +92,21 @@ class ESNCell(ESNCellBase):
 
 
 class DeepESNCell(nn.Module):
-    def __init__(self, input_size, hidden_size, bias=True, initializer: WeightInitializer = None, num_layers=1,
+    def __init__(self, input_size: int, hidden_size: int, bias=True,
+                 initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
                  activation: Activation = A.tanh()):
         super().__init__()
         self.activation = activation
         self.layers = [ESNCell(input_size, hidden_size, bias, initializer, activation)] + \
-                      [ESNCell(hidden_size, hidden_size, bias, initializer, activation) for i in
+                      [ESNCell(hidden_size, hidden_size, bias, initializer, activation) for _ in
                        range(1, num_layers)]
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
-        self.initializer = initializer  # todo generalize?
-        self.activation = activation  # todo generalize?
+        self.initializer = initializer
+        self.activation = activation
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         result = torch.Tensor(input.size(0), len(self.layers) * self.hidden_size)
 
         for i in range(input.size(0)):
@@ -110,10 +115,10 @@ class DeepESNCell(nn.Module):
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
-            result[i, :] = torch.cat(new_hidden_states, axis=1)
+            result[i, :] = torch.cat(new_hidden_states, axis=1)  # todo check for multivariete
         return result
 
-    def washout(self, input):
+    def washout(self, input: Tensor):
         for i in range(input.size(0)):
             cell_input = input[i]
             for esn_cell in self.layers:
@@ -121,44 +126,46 @@ class DeepESNCell(nn.Module):
 
 
 class SVDReadout(nn.Module):
-    def __init__(self, total_hidden_size, output_dim, regularization=1):
+    def __init__(self, total_hidden_size: int, output_dim: int, regularization: float = 1.):
         super().__init__()
         self.readout = nn.Linear(total_hidden_size, output_dim)
         self.regularization = regularization
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         return self.readout(input)
 
-    def fit(self, input, target):
+    def fit(self, input: Tensor, target: Tensor):
         X = torch.ones(input.size(0), 1 + input.size(1), device=target.device)
         X[:, :-1] = input
         W = self._solve_svd(X, target, self.regularization)
         self.readout.bias = nn.Parameter(W[:, -1], requires_grad=False)
         self.readout.weight = nn.Parameter(W[:, :-1], requires_grad=False)
 
-    def _solve_svd(self, X, y, alpha):
-        y = y[:, 0, :]  # ignore batch # todo stack by batch
+    def _solve_svd(self, X: Tensor, y: Tensor, alpha: float) -> Tensor:
+        # implementation taken from scikit-learn
+        y = y[:, 0, :]  # ignore batch
         U, s, V = torch.svd(X)
         idx = s > 1e-15  # same default value as scipy.linalg.pinv
         s_nnz = s[idx][:, None]
-        UTy = U.T @ y  # UTy = torch.mm(U.t(), target)
+        UTy = U.T @ y
         d = torch.zeros(s.size(0), 1, device=X.device)
         d[idx] = s_nnz / (s_nnz ** 2 + alpha)
         d_UT_y = d * UTy
 
-        return (V @ d_UT_y).T  # trchmm?
+        return (V @ d_UT_y).T
 
 
 class DeepESN(nn.Module):
-    def __init__(self, input_size, hidden_size, output_dim=1, bias=True, initialization=None, num_layers=1,
-                 activation: Activation = A.tanh(leaky_rate=0.7), transient=30, reglarization=1):
+    def __init__(self, input_size: int, hidden_size: int, output_dim: int = 1, bias: bool = True,
+                 initializer: WeightInitializer = None, num_layers=1, activation: Activation = A.tanh(),
+                 transient: int = 30, reglarization: float = 1.):
         super(DeepESN, self).__init__()
         self.transient = transient
         self.initial_state = True
-        self.reservoir = DeepESNCell(input_size, hidden_size, bias, initialization, num_layers, activation)
+        self.reservoir = DeepESNCell(input_size, hidden_size, bias, initializer, num_layers, activation)
         self.readout = SVDReadout(hidden_size * num_layers, output_dim, regularization=reglarization)
 
-    def fit(self, input, target):
+    def fit(self, input: Tensor, target: Tensor):
         if self.initial_state:
             self.initial_state = False
             self.reservoir.washout(input[:self.transient])
@@ -168,10 +175,8 @@ class DeepESN(nn.Module):
             mapped_input = self.reservoir(input)
             self.readout.fit(mapped_input, target)
 
-    def forward(self, input):
+    def forward(self, input: Tensor) -> Tensor:
         self.initial_state = False
         mapped_input = self.reservoir(input)
 
         return self.readout(mapped_input)
-
-# todo GPU, proper nograd, typing

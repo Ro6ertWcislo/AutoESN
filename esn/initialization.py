@@ -59,7 +59,7 @@ def _spectral_noisy(spectral_radius=0.9, noise_magnitude=0.2) -> Initializer:
     return __spectral_noisy
 
 
-class CompositeInitializer():
+class CompositeInitializer(object):
     def __init__(self):
         self.initializers: List[Initializer, ...] = []
 
@@ -116,7 +116,7 @@ class WeightInitializer(object):
         self.bias_ih_init = bias_ih_init
         self.bias_hh_init = bias_hh_init
 
-    def init_weight_ih(self, weight: Tensor) -> Tensor:  # todo types
+    def init_weight_ih(self, weight: Tensor) -> Tensor:
         return self.weight_ih_init(weight)
 
     def init_weight_hh(self, weight: Tensor) -> Tensor:
