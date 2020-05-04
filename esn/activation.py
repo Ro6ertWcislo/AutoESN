@@ -38,6 +38,6 @@ def linear(leaky_rate: float = 1.0) -> Activation:
 
 def self_normalizing(leaky_rate: float = 1.0, spectral_radius: float = 0.9) -> Activation:
     def activation_function(input: Tensor) -> Tensor:
-        return spectral_radius * M.spectral_norm(input)
+        return spectral_radius * M.spectral_normalize(input)
 
     return Activation(activation_function=activation_function, leaky_rate=leaky_rate)

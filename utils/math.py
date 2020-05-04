@@ -5,7 +5,7 @@ from torch import Tensor
 from torch.nn import functional as F
 
 
-def spectral_norm(tensor: Tensor) -> Tensor:
+def spectral_normalize(tensor: Tensor) -> Tensor:
     u, s, v = torch.svd(tensor, compute_uv=False)
     norm = s[0]  # max eigenvalue is on 1 place
     return tensor / norm

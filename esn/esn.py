@@ -56,12 +56,12 @@ class ESNCellBase(nn.Module):
                 "hidden{} has inconsistent hidden_size: got {}, expected {}".format(
                     hidden_label, hx.size(1), self.hidden_size))
 
-    def reset_parameters(self):
-        self.weight_ih[:] = self.initializer.init_weight_ih(self.weight_ih)
-        self.weight_hh[:] = self.initializer.init_weight_hh(self.weight_hh)
+    def reset_parameters(self, weight_ih=None, weight_hh=None, bias_ih=None, bias_hh=None):
+        self.weight_ih[:] = self.initializer.init_weight_ih(self.weight_ih, weight_ih)
+        self.weight_hh[:] = self.initializer.init_weight_hh(self.weight_hh, weight_hh)
         if self.bias:
-            self.bias_ih[:] = self.initializer.init_bias_ih(self.bias_ih)
-            self.bias_hh[:] = self.initializer.init_bias_ih(self.bias_hh)
+            self.bias_ih[:] = self.initializer.init_bias_ih(self.bias_ih, bias_ih)
+            self.bias_hh[:] = self.initializer.init_bias_ih(self.bias_hh, bias_hh)
 
 
 class ESNCell(ESNCellBase):

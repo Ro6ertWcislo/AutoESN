@@ -1,28 +1,28 @@
-from typing import List
+from typing import List, Optional
 
 import torch.nn
 from torch import Tensor
 
-from utils.math import spectral_norm
+from utils.math import spectral_normalize
 from utils.types import Initializer
 
 
 def _scale(factor: float = 1.0) -> Initializer:
-    def __scale(weight: Tensor) -> Tensor:
+    def __scale(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         return weight * factor
 
     return __scale
 
 
 def _normalize() -> Initializer:
-    def __normalize(weight: Tensor) -> Tensor:
-        return spectral_norm(weight)
+    def __normalize(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
+        return spectral_normalize(weight)
 
     return __normalize
 
 
 def _sparse(density: float = 1.0) -> Initializer:
-    def __sparse(weight: Tensor) -> Tensor:
+    def __sparse(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         zero_mask = torch.empty_like(weight).uniform_() > (1 - density)
         return weight * zero_mask
 
@@ -30,7 +30,7 @@ def _sparse(density: float = 1.0) -> Initializer:
 
 
 def _uniform(min_val: float = -1, max_val: float = 1) -> Initializer:
-    def __uniform(weight: Tensor) -> Tensor:
+    def __uniform(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         new_weight = torch.empty_like(weight)
         torch.nn.init.uniform_(new_weight, min_val, max_val)
         return new_weight
@@ -39,7 +39,7 @@ def _uniform(min_val: float = -1, max_val: float = 1) -> Initializer:
 
 
 def _xavier_uniform() -> Initializer:
-    def __uniform(weight: Tensor) -> Tensor:
+    def __uniform(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         new_weight = torch.empty_like(weight)
         torch.nn.init.xavier_uniform_(new_weight)
         return new_weight
@@ -48,7 +48,7 @@ def _xavier_uniform() -> Initializer:
 
 
 def _spectral_noisy(spectral_radius=0.9, noise_magnitude=0.2) -> Initializer:
-    def __spectral_noisy(weight: Tensor) -> Tensor:
+    def __spectral_noisy(weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         def scale(tensor):
             return (tensor / tensor.size(0)) * spectral_radius
 
@@ -87,9 +87,9 @@ class CompositeInitializer(object):
         self.initializers.append(_spectral_noisy(spectral_radius=spectral_radius, noise_magnitude=noise_magnitude))
         return self
 
-    def __call__(self, weight) -> Tensor:
+    def __call__(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         for initializer in self.initializers:
-            weight = initializer(weight)
+            weight = initializer(weight, reference_weight)
         return weight
 
 
@@ -116,14 +116,14 @@ class WeightInitializer(object):
         self.bias_ih_init = bias_ih_init
         self.bias_hh_init = bias_hh_init
 
-    def init_weight_ih(self, weight: Tensor) -> Tensor:
-        return self.weight_ih_init(weight)
+    def init_weight_ih(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
+        return self.weight_ih_init(weight, reference_weight)
 
-    def init_weight_hh(self, weight: Tensor) -> Tensor:
-        return self.weight_hh_init(weight)
+    def init_weight_hh(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
+        return self.weight_hh_init(weight, reference_weight)
 
-    def init_bias_ih(self, bias: Tensor) -> Tensor:
-        return self.bias_ih_init(bias)
+    def init_bias_ih(self, bias: Tensor, reference_bias: Optional[Tensor] = None) -> Tensor:
+        return self.bias_ih_init(bias, reference_bias)
 
-    def init_bias_hh(self, bias: Tensor) -> Tensor:
-        return self.bias_hh_init(bias)
+    def init_bias_hh(self, bias: Tensor, reference_bias: Optional[Tensor] = None) -> Tensor:
+        return self.bias_hh_init(bias, reference_bias)
