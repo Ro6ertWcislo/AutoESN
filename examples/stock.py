@@ -37,31 +37,64 @@ from matplotlib import pyplot as plt
 # plt.show()
 
 
-esn = DeepSubreservoirESN(1,1, initializer=SubreservoirWeightInitializer(subreservoir_size=30), num_layers=3, bias=False, activation=A.tanh(leaky_rate=0.6),
-              transient=365)
-#todo spr self normalizing
-# print(esn(X).size())
-esn.fit(X, y)
-pred = esn(X_test)
-plt.plot(range(378), pred.view(-1).detach().numpy(), 'r')
+# esn = DeepSubreservoirESN(1,1, initializer=SubreservoirWeightInitializer(subreservoir_size=30), num_layers=3, bias=False, activation=A.tanh(leaky_rate=0.6),
+#               transient=365)
+# #todo spr self normalizing
+# # print(esn(X).size())
+# esn.fit(X, y)
+# pred = esn(X_test)
+# plt.plot(range(378), pred.view(-1).detach().numpy(), 'r')
+# plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
+# # plt.show()
+#
+# esn.reset_hidden()
+# esn.grow()
+# esn.fit(X, y)
+# pred = esn(X_test)
+# plt.plot(range(378), pred.view(-1).detach().numpy(), 'y')
+# # plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
+# # plt.show()
+# esn.reset_hidden()
+# esn.grow()
+#
+# # plt.plot(range(50), pred.view(-1).detach().numpy()[-50:], 'r')
+# # plt.plot(range(50), y_test.view(-1).detach().numpy()[-50:], 'b')
+# # plt.show()
+# esn.fit(X, y)
+# pred = esn(X_test)
+# plt.plot(range(378), pred.view(-1).detach().numpy(), 'g')
+# # plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
+# plt.show()
+# esn.reset_hidden()
+# esn.grow()
+#
+#
+# esn.fit(X, y)
+# pred = esn(X_test)
+# plt.plot(range(378), pred.view(-1).detach().numpy(), 'c')
+# # plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
+# # plt.show()
+# esn.reset_hidden()
+# esn.grow()
+#
+#
+# esn.fit(X, y)
+# pred = esn(X_test)
+# plt.plot(range(378), pred.view(-1).detach().numpy(), 'y')
+# # plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
+# plt.show()
+# esn.reset_hidden()
+# esn.grow()
+#
+
+from esn.util import fit_transform_DSESN
+
+esn = DeepSubreservoirESN(1, 1, initializer=SubreservoirWeightInitializer(subreservoir_size=20), num_layers=3,
+                          bias=False, activation=A.tanh(leaky_rate=0.6),
+                          transient=60)
+metric = torch.nn.MSELoss()
+trained_esn, output = fit_transform_DSESN(esn, X, y, X_test, y_test, metric, verbose=1)
+
+plt.plot(range(378), output.view(-1).detach().numpy(), 'c')
 plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
-# plt.show()
-
-esn.reset_hidden()
-esn.grow()
-esn.fit(X, y)
-pred = esn(X_test)
-plt.plot(range(378), pred.view(-1).detach().numpy(), 'y')
-# plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
-# plt.show()
-esn.reset_hidden()
-esn.grow()
-
-# plt.plot(range(50), pred.view(-1).detach().numpy()[-50:], 'r')
-# plt.plot(range(50), y_test.view(-1).detach().numpy()[-50:], 'b')
-# plt.show()
-esn.fit(X, y)
-pred = esn(X_test)
-plt.plot(range(378), pred.view(-1).detach().numpy(), 'g')
-# plt.plot(range(378), y_test.view(-1).detach().numpy(), 'b')
 plt.show()
