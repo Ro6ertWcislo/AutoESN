@@ -72,15 +72,15 @@ class ESNCellBase(nn.Module):
         if self.bias:
             self.bias_ih = nn.Parameter(
                 data=self.initializer.init_bias_ih(
-                    weight=torch.Tensor(self.hidden_size),
-                    reference_weight=self.bias_ih
+                    bias=torch.Tensor(self.hidden_size),
+                    reference_bias=self.bias_ih
                 ),
                 requires_grad=self.requires_grad
             )
             self.bias_hh = nn.Parameter(
                 data=self.initializer.init_bias_hh(
-                    weight=torch.Tensor(self.hidden_size),
-                    reference_weight=self.bias_hh
+                    bias=torch.Tensor(self.hidden_size),
+                    reference_bias=self.bias_hh
                 ),
                 requires_grad=self.requires_grad
             )
