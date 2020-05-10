@@ -15,7 +15,7 @@ def fit_transform_DSESN(esn: DeepSubreservoirESN, input: Tensor, target: Tensor,
     output = esn(test_input)
     best_output = output
     best_result = float('inf')
-    new_result = metric(output, test_target).item()
+    new_result = metric(output.unsqueeze(-1), test_target).item()
 
     while new_result < best_result:
         if verbose > 0:
@@ -27,6 +27,7 @@ def fit_transform_DSESN(esn: DeepSubreservoirESN, input: Tensor, target: Tensor,
         esn.grow()
         esn.fit(input, target)
         output = esn(test_input)
-        new_result = metric(output, test_target).item()
+        # single batch?
+        new_result = metric(output.unsqueeze(-1), test_target).item()
 
     return best_model, best_output
