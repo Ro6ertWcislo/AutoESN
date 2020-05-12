@@ -192,7 +192,7 @@ class SubreservoirWeightInitializer(WeightInitializer):
         )
         self.subreservoir_size = subreservoir_size
         self.weight_ih_pad = SubreservoirInitializer(GrowingType.InputPad, subreservoir_size,
-                                                     weight_ih_init)  # todo moze calosc od razu? ma to sens?
+                                                     weight_ih_init)
 
     def init_weight_ih_pad(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
         return self.weight_ih_pad(weight, reference_weight)
