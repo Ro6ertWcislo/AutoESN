@@ -13,12 +13,10 @@ class Activation(nn.Module):
         self.leaky_rate = leaky_rate
         self.activation_function = activation_function
 
-    def forward(self, input: Tensor, hx_prev: Tensor, weight_ih: Tensor, weight_hh: Tensor, bias_ih: Optional[Tensor],
-                bias_hh: Optional[Tensor]) -> Tensor:
-        pre_activation = M.linear(input, hx_prev, weight_ih, weight_hh, bias_ih, bias_hh)
+    def forward(self, pre_activation: Tensor, prev_state: Tensor=None) -> Tensor:
         hx_next = self.activation_function(pre_activation)
         # leaky rate == 1.0 means no leaky_rate at all. hx_prev gets zeroed
-        return M.leaky(hx_prev=hx_prev, hx_next=hx_next, leaky_rate=self.leaky_rate)
+        return M.leaky(hx_prev=prev_state, hx_next=hx_next, leaky_rate=self.leaky_rate)
 
 
 def tanh(leaky_rate: float = 1.0) -> Activation:

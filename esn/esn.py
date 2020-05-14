@@ -1,9 +1,13 @@
+from typing import List
+
 import torch
 from torch import nn, Tensor
 
 from esn import activation as A
 from esn.activation import Activation
 from esn.initialization import WeightInitializer, SubreservoirWeightInitializer
+from utils import math as M
+from utils.types import SpectralCentroid
 
 
 class ESNCellBase(nn.Module):
@@ -23,6 +27,7 @@ class ESNCellBase(nn.Module):
         self.bias = bias
         self.initializer = initializer
         self.weight_ih, self.weight_hh, self.bias_ih, self.bias_hh = None, None, None, None
+        self.IpGain, self.IpBias = None, None
         self.init_parameters()
 
     def extra_repr(self):
@@ -104,15 +109,45 @@ class ESNCell(ESNCellBase):
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
         self.check_forward_hidden(input, self.hx, '')
-        self.hx = self.activation(
+        pre_activation = M.linear(
             input, self.hx,
             self.weight_ih, self.weight_hh,
             self.bias_ih, self.bias_hh,
         )
+        if self.IpGain is not None and self.IpBias is not None:
+            self.hx = self.activation(self.IpGain * pre_activation + self.IpBias, prev_state=self.hx)
+        else:
+            self.hx = self.activation(pre_activation, prev_state=self.hx)
+
         return self.hx
 
     def reset_hidden(self):
         self.hx = None
+
+    def intristic_plasticity_pretrain(self, input: Tensor, epochs: int = 10, mean: float = 0., variance: float = 1.,
+                                      learning_rate: float = 10e-4):
+        self.IpGain = torch.ones(1, self.hidden_size)  # todo stay on if broadcasting, change on chunk if needed
+        self.IpBias = torch.zeros(1, self.hidden_size)
+
+        for i in range(epochs):
+            print(f'starting learning for epoch {i+1} out of {epochs}. Dims: input: {input.size()}. cell: in:{self.input_size}, hidden: {self.hidden_size}.')
+            self.hx = torch.zeros(1, self.hidden_size, dtype=input.dtype, device=input.device,
+                                  requires_grad=self.requires_grad)
+            for i in range(input.size(0)):
+                cell_input = input[i]
+                pre_activation = M.linear(
+                    cell_input, self.hx,
+                    self.weight_ih, self.weight_hh,
+                    self.bias_ih, self.bias_hh,
+                )
+                post_activation = self.activation(pre_activation, prev_state=self.hx)
+                bias_delta = - learning_rate * (-(mean / variance) + (post_activation / variance) * (
+                        2 * variance + 1 - post_activation ** 2 + mean * post_activation))
+                self.IpBias = self.IpBias + bias_delta
+                self.IpGain = self.IpGain + (
+                        torch.ones_like(self.IpGain) * learning_rate) / self.IpGain + bias_delta * pre_activation
+                self.hx = post_activation
+        self.reset_hidden()
 
 
 class SubreservoirCell(ESNCell):
@@ -174,7 +209,17 @@ class DeepESNCell(nn.Module):
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
             result[i, :] = torch.cat(new_hidden_states, axis=1)  # todo check for multivariete
+
         return result
+
+    def intristic_plasticity_pretrain(self, input, epochs: int = 10, mean: float = 0., variance: float = 1.,
+                    learning_rate: float = 10e-4):
+        cell_input = input[:,0,:]
+        for num,esn_cell in enumerate(self.layers):
+            print(f'starting layer: {num+1} out of {len(self.layers)}')
+            esn_cell.intristic_plasticity_pretrain(cell_input,epochs=epochs,mean=mean,variance=variance,learning_rate=learning_rate)
+            cell_input = [esn_cell(cell_input[t].unsqueeze(0)) for t in range(cell_input.size(0))]
+            cell_input  = torch.cat(cell_input,axis=0)
 
     def washout(self, input: Tensor):
         for i in range(input.size(0)):
@@ -185,6 +230,29 @@ class DeepESNCell(nn.Module):
     def reset_hidden(self):
         for layer in self.layers:
             layer.reset_hidden()
+
+    def assign_layers(self, input: Tensor, max_layers: int = 10, transient: int = 30,
+                      tolerance: float = 0.01) -> List[SpectralCentroid]:
+        in_training = True
+        self.washout(input[:transient])
+        mapped_states = self.forward(input[transient:])
+        actual_centroid, actual_spread = M.compute_spectral_statistics(mapped_states)
+        centroids = [actual_centroid]
+
+        # todo to jest wersja globalna, tzn jak dodanie nowej warstwy wpłynie na całą odpowiedz sieci. Ma to sens ze bedzie sie stabilizowac
+        while in_training and len(self.layers) <= max_layers:
+            next_layer = ESNCell(self.hidden_size, self.hidden_size, self.bias, self.initializer, self.activation)
+
+            new_mapped_states = torch.cat([mapped_states, next_layer(mapped_states[:, -self.hidden_size:])], axis=1)
+            new_centroid, new_spread = M.compute_spectral_statistics(new_mapped_states)
+            if M._spectral_distance_significant(actual_centroid, new_centroid, actual_spread, tolerance):
+                self.layers.append(next_layer)
+                self.reset_hidden()
+                mapped_states, actual_centroid, actual_spread = new_mapped_states, new_centroid, new_spread
+            else:
+                in_training = False
+            centroids.append(new_centroid)  # add also the one that is not in the final net
+        return centroids
 
 
 class DeepSubreservoirCell(DeepESNCell):
