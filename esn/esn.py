@@ -130,7 +130,9 @@ class ESNCell(ESNCellBase):
         self.IpBias = torch.zeros(1, self.hidden_size)
 
         for i in range(epochs):
-            print(f'starting learning for epoch {i+1} out of {epochs}. Dims: input: {input.size()}. cell: in:{self.input_size}, hidden: {self.hidden_size}.')
+            # todo change on logging, add early stop on plateau
+            print(
+                f'starting learning for epoch {i + 1} out of {epochs}. Dims: input: {input.size()}. cell: in:{self.input_size}, hidden: {self.hidden_size}.')
             self.hx = torch.zeros(1, self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
             for i in range(input.size(0)):
@@ -212,14 +214,15 @@ class DeepESNCell(nn.Module):
 
         return result
 
-    def intristic_plasticity_pretrain(self, input, epochs: int = 10, mean: float = 0., variance: float = 1.,
-                    learning_rate: float = 10e-4):
-        cell_input = input[:,0,:]
-        for num,esn_cell in enumerate(self.layers):
-            print(f'starting layer: {num+1} out of {len(self.layers)}')
-            esn_cell.intristic_plasticity_pretrain(cell_input,epochs=epochs,mean=mean,variance=variance,learning_rate=learning_rate)
+    def intristic_plasticity_pretrain(self, input, epochs: int = 10, mean: float = 0., variance: float = 0.1,
+                                      learning_rate: float = 1e-4):
+        cell_input = input[:, 0, :]
+        for num, esn_cell in enumerate(self.layers):
+            print(f'starting layer: {num + 1} out of {len(self.layers)}')
+            esn_cell.intristic_plasticity_pretrain(cell_input, epochs=epochs, mean=mean, variance=variance,
+                                                   learning_rate=learning_rate)
             cell_input = [esn_cell(cell_input[t].unsqueeze(0)) for t in range(cell_input.size(0))]
-            cell_input  = torch.cat(cell_input,axis=0)
+            cell_input = torch.cat(cell_input, axis=0)
 
     def washout(self, input: Tensor):
         for i in range(input.size(0)):
@@ -232,16 +235,23 @@ class DeepESNCell(nn.Module):
             layer.reset_hidden()
 
     def assign_layers(self, input: Tensor, max_layers: int = 10, transient: int = 30,
-                      tolerance: float = 0.01) -> List[SpectralCentroid]:
+                      tolerance: float = 0.01, intristic_plasticity: bool = False, epochs: int = 10, mean: float = 0.,
+                      variance: float = 0.1, learning_rate: float = 1e-4) -> List[SpectralCentroid]:
         in_training = True
         self.washout(input[:transient])
         mapped_states = self.forward(input[transient:])
         actual_centroid, actual_spread = M.compute_spectral_statistics(mapped_states)
         centroids = [actual_centroid]
+        if intristic_plasticity:
+            self.intristic_plasticity_pretrain(input, epochs=epochs, mean=mean, variance=variance,
+                                               learning_rate=learning_rate)
 
         # todo to jest wersja globalna, tzn jak dodanie nowej warstwy wpłynie na całą odpowiedz sieci. Ma to sens ze bedzie sie stabilizowac
         while in_training and len(self.layers) <= max_layers:
             next_layer = ESNCell(self.hidden_size, self.hidden_size, self.bias, self.initializer, self.activation)
+            if intristic_plasticity:
+                next_layer.intristic_plasticity_pretrain(mapped_states[:, -self.hidden_size:], epochs=epochs, mean=mean, variance=variance,
+                                                         learning_rate=learning_rate)
 
             new_mapped_states = torch.cat([mapped_states, next_layer(mapped_states[:, -self.hidden_size:])], axis=1)
             new_centroid, new_spread = M.compute_spectral_statistics(new_mapped_states)
