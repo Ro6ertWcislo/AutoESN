@@ -47,8 +47,12 @@ def _spectral_spread(magnitudes: Tensor, frequencies: Tensor, centroid: float) -
     return (torch.sqrt(torch.sum(magnitudes * ((frequencies - centroid) ** 2)) / torch.sum(magnitudes))).item()
 
 
+def _spectral_distance(centroid1: float, centroid2: float) -> float:
+    return abs(centroid1 - centroid2)
+
+
 def _spectral_distance_significant(centroid1: float, centroid2: float, spread1: float, tolerance: float) -> bool:
-    return abs(centroid1 - centroid2) > spread1 * tolerance
+    return _spectral_distance(centroid1, centroid2) > spread1 * tolerance
 
 
 def compute_spectral_statistics(mapped_states: Tensor) -> Tuple[SpectralCentroid, SpectralSpread]:

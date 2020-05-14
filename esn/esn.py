@@ -7,6 +7,7 @@ from esn import activation as A
 from esn.activation import Activation
 from esn.initialization import WeightInitializer, SubreservoirWeightInitializer
 from utils import math as M
+from utils.math import _spectral_distance
 from utils.types import SpectralCentroid
 
 
@@ -103,12 +104,28 @@ class ESNCell(ESNCellBase):
         self.activation = activation
         self.hx = None
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: Tensor, no_chunk=True) -> Tensor:
         self.check_forward_input(input)
         if self.hx is None:
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
         self.check_forward_hidden(input, self.hx, '')
+
+        if input.ndim == 2:
+            if input.size(0) > 1 and no_chunk:
+                # for now change on warining
+                input = input.unsqueeze(1)
+            else:
+                if input.size(0)>1:
+                    print(f'ojojoj a.k.a. WARNING bitch: {input.size()}')
+                self._forward(input)
+        if input.ndim == 3:
+            for i in range(input.size(0)):
+                self._forward(input[i])
+
+        return self.hx
+
+    def _forward(self, input: Tensor):
         pre_activation = M.linear(
             input, self.hx,
             self.weight_ih, self.weight_hh,
@@ -118,8 +135,6 @@ class ESNCell(ESNCellBase):
             self.hx = self.activation(self.IpGain * pre_activation + self.IpBias, prev_state=self.hx)
         else:
             self.hx = self.activation(pre_activation, prev_state=self.hx)
-
-        return self.hx
 
     def reset_hidden(self):
         self.hx = None
@@ -200,7 +215,7 @@ class DeepESNCell(nn.Module):
         self.activation = activation
 
     def forward(self, input: Tensor) -> Tensor:
-        result = torch.Tensor(input.size(0), len(self.layers) * self.hidden_size)
+        result = torch.Tensor(input.size(0), sum([cell.hidden_size for cell in self.layers]))
 
         for i in range(input.size(0)):
             cell_input = input[i]
@@ -233,7 +248,8 @@ class DeepESNCell(nn.Module):
             layer.reset_hidden()
 
     def assign_layers(self, input: Tensor, max_layers: int = 10, transient: int = 30,
-                      tolerance: float = 0.01, intristic_plasticity: bool = False, epochs: int = 10, mean: float = 0.,
+                      tolerance: float = 0.01, size_increase=None, intristic_plasticity: bool = False, epochs: int = 10,
+                      mean: float = 0.,
                       variance: float = 0.1, learning_rate: float = 1e-4) -> List[SpectralCentroid]:
         in_training = True
         self.washout(input[:transient])
@@ -245,15 +261,50 @@ class DeepESNCell(nn.Module):
                                                learning_rate=learning_rate)
 
         while in_training and len(self.layers) <= max_layers:
-            next_layer = ESNCell(self.hidden_size, self.hidden_size, self.bias, self.initializer, self.activation)
-            if intristic_plasticity:
-                next_layer.intristic_plasticity_pretrain(mapped_states[:, -self.hidden_size:], epochs=epochs, mean=mean,
-                                                         variance=variance,
-                                                         learning_rate=learning_rate)
+            next_layer_deep = ESNCell(self.layers[-1].hidden_size, self.hidden_size, self.bias, self.initializer,
+                                      self.activation)
 
-            new_mapped_states = torch.cat([mapped_states, next_layer(mapped_states[:, -self.hidden_size:])], axis=1)
+            if intristic_plasticity:
+                next_layer_deep.intristic_plasticity_pretrain(mapped_states[:, -next_layer_deep.input_size:],
+                                                              epochs=epochs,
+                                                              mean=mean, variance=variance, learning_rate=learning_rate)
+            new_mapped_states = torch.cat(
+                [mapped_states, next_layer_deep(mapped_states[:, -next_layer_deep.input_size:])],
+                axis=1)
             new_centroid, new_spread = M.compute_spectral_statistics(new_mapped_states)
+            next_layer = next_layer_deep
+
+            next_layer_wide_better = False
+            if size_increase:
+                # todo change hidden size on list of method
+                next_layer_wide = ESNCell(self.layers[-1].input_size, self.layers[-1].hidden_size + size_increase,
+                                          self.bias, self.initializer, self.activation)
+                # if len(self.layers) == 1:
+                #     next_layer_wide.washout() -> add
+                #     with other stuff
+                if intristic_plasticity:
+                    next_layer_wide.intristic_plasticity_pretrain(
+                        mapped_states[:, -(self.layers[-1].hidden_size + next_layer_wide.input_size): -self.layers[
+                            -1].hidden_size] if len(self.layers) > 1 else input[transient:, 0, :],
+                        epochs=epochs, mean=mean, variance=variance, learning_rate=learning_rate)
+                if len(self.layers) > 1:
+                    new_mapped_states_wide = torch.cat(
+                        [mapped_states[:, :-self.hidden_size],
+                         next_layer_wide(mapped_states[:,
+                                         -(self.layers[-1].hidden_size + next_layer_wide.input_size): -self.layers[
+                                             -1].hidden_size])], axis=1)
+                else:
+                    new_mapped_states_wide = next_layer_wide(input[transient:, 0, :])
+                new_centroid_wide, new_spread_wide = M.compute_spectral_statistics(new_mapped_states_wide)
+                if _spectral_distance(actual_centroid, new_centroid_wide) > _spectral_distance(actual_centroid,
+                                                                                               new_centroid):
+                    new_centroid, new_spread, next_layer = new_centroid_wide, new_spread_wide, next_layer_wide
+                    next_layer_wide_better = True
+                    print('wide chosen')
+
             if M._spectral_distance_significant(actual_centroid, new_centroid, actual_spread, tolerance):
+                if next_layer_wide_better:
+                    self.layers.pop()
                 self.layers.append(next_layer)
                 self.reset_hidden()
                 mapped_states, actual_centroid, actual_spread = new_mapped_states, new_centroid, new_spread
