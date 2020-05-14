@@ -179,8 +179,6 @@ class SubreservoirCell(ESNCell):
 
     def grow(self):
         self.hidden_size += self.initializer.subreservoir_size
-        # if not self.input_cell:
-        #     self.input_size += self.initializer.subreservoir_size
         self.init_parameters()
 
 
@@ -246,11 +244,11 @@ class DeepESNCell(nn.Module):
             self.intristic_plasticity_pretrain(input, epochs=epochs, mean=mean, variance=variance,
                                                learning_rate=learning_rate)
 
-        # todo to jest wersja globalna, tzn jak dodanie nowej warstwy wpłynie na całą odpowiedz sieci. Ma to sens ze bedzie sie stabilizowac
         while in_training and len(self.layers) <= max_layers:
             next_layer = ESNCell(self.hidden_size, self.hidden_size, self.bias, self.initializer, self.activation)
             if intristic_plasticity:
-                next_layer.intristic_plasticity_pretrain(mapped_states[:, -self.hidden_size:], epochs=epochs, mean=mean, variance=variance,
+                next_layer.intristic_plasticity_pretrain(mapped_states[:, -self.hidden_size:], epochs=epochs, mean=mean,
+                                                         variance=variance,
                                                          learning_rate=learning_rate)
 
             new_mapped_states = torch.cat([mapped_states, next_layer(mapped_states[:, -self.hidden_size:])], axis=1)
