@@ -1,3 +1,4 @@
+import copy
 from typing import List
 
 import torch
@@ -109,14 +110,14 @@ class ESNCell(ESNCellBase):
         if self.hx is None:
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
-        self.check_forward_hidden(input, self.hx, '')
+        # self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
 
         if input.ndim == 2:
             if input.size(0) > 1 and no_chunk:
                 # for now change on warining
                 input = input.unsqueeze(1)
             else:
-                if input.size(0)>1:
+                if input.size(0) > 1:
                     print(f'ojojoj a.k.a. WARNING bitch: {input.size()}')
                 self._forward(input)
         if input.ndim == 3:
@@ -136,8 +137,11 @@ class ESNCell(ESNCellBase):
         else:
             self.hx = self.activation(pre_activation, prev_state=self.hx)
 
-    def reset_hidden(self):
+    def reset_hidden(self, reset_IP=False):
         self.hx = None
+        if reset_IP:
+            self.IpGain = None
+            self.IpBias = None
 
     def intristic_plasticity_pretrain(self, input: Tensor, epochs: int = 10, mean: float = 0., variance: float = 1.,
                                       learning_rate: float = 10e-4):
@@ -197,7 +201,6 @@ class SubreservoirCell(ESNCell):
         self.init_parameters()
 
 
-# todo handle different layer sizes
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=True,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
@@ -247,6 +250,14 @@ class DeepESNCell(nn.Module):
         for layer in self.layers:
             layer.reset_hidden()
 
+    def _new_deep_layer(self) -> ESNCell:
+        return ESNCell(self.layers[-1].hidden_size, self.hidden_size, self.bias, self.initializer,
+                       self.activation)
+
+    def _new_wide_layer(self, size_increase: int) -> ESNCell:
+        return ESNCell(self.layers[-1].input_size, self.layers[-1].hidden_size + size_increase,
+                       self.bias, self.initializer, self.activation)
+
     def assign_layers(self, input: Tensor, max_layers: int = 10, transient: int = 30,
                       tolerance: float = 0.01, size_increase=None, intristic_plasticity: bool = False, epochs: int = 10,
                       mean: float = 0.,
@@ -261,8 +272,7 @@ class DeepESNCell(nn.Module):
                                                learning_rate=learning_rate)
 
         while in_training and len(self.layers) <= max_layers:
-            next_layer_deep = ESNCell(self.layers[-1].hidden_size, self.hidden_size, self.bias, self.initializer,
-                                      self.activation)
+            next_layer_deep = self._new_deep_layer()
 
             if intristic_plasticity:
                 next_layer_deep.intristic_plasticity_pretrain(mapped_states[:, -next_layer_deep.input_size:],
@@ -277,11 +287,12 @@ class DeepESNCell(nn.Module):
             next_layer_wide_better = False
             if size_increase:
                 # todo change hidden size on list of method
-                next_layer_wide = ESNCell(self.layers[-1].input_size, self.layers[-1].hidden_size + size_increase,
-                                          self.bias, self.initializer, self.activation)
-                # if len(self.layers) == 1:
-                #     next_layer_wide.washout() -> add
-                #     with other stuff
+                next_layer_wide = self._new_wide_layer(size_increase)
+                if len(self.layers) == 1:
+                    # washout
+                    for i in range(transient):
+                        next_layer_wide(input[i])
+
                 if intristic_plasticity:
                     next_layer_wide.intristic_plasticity_pretrain(
                         mapped_states[:, -(self.layers[-1].hidden_size + next_layer_wide.input_size): -self.layers[
@@ -294,7 +305,7 @@ class DeepESNCell(nn.Module):
                                          -(self.layers[-1].hidden_size + next_layer_wide.input_size): -self.layers[
                                              -1].hidden_size])], axis=1)
                 else:
-                    new_mapped_states_wide = next_layer_wide(input[transient:, 0, :])
+                    new_mapped_states_wide = next_layer_wide(input[transient:])
                 new_centroid_wide, new_spread_wide = M.compute_spectral_statistics(new_mapped_states_wide)
                 if _spectral_distance(actual_centroid, new_centroid_wide) > _spectral_distance(actual_centroid,
                                                                                                new_centroid):
@@ -327,6 +338,7 @@ class DeepSubreservoirCell(DeepESNCell):
                        range(1, num_layers)]
         self.subreservoir_size = initializer.subreservoir_size
         self.hidden_size = initializer.subreservoir_size
+        self.initializer = initializer
 
     def grow(self):
         self.hidden_size += self.subreservoir_size
@@ -334,6 +346,15 @@ class DeepSubreservoirCell(DeepESNCell):
             self.layers[i].grow()
             if i > 0:
                 self.layers[i].fix_input_layer(self.layers[i - 1])
+
+    def _new_deep_layer(self) -> ESNCell:
+        return SubreservoirCell(self.layers[-1].hidden_size, self.bias, self.initializer, self.activation)
+
+    def _new_wide_layer(self, size_increase: int) -> ESNCell:
+        new_layer = copy.deepcopy(self.layers[-1])
+        new_layer.reset_hidden(reset_IP=True)
+        new_layer.grow()
+        return new_layer
 
 
 class SVDReadout(nn.Module):
@@ -420,6 +441,6 @@ class DeepSubreservoirESN(ESNBase):
         self.hidden_size = self.reservoir.hidden_size
 
     def grow(self):
-        self.reservoir.grow()
+        self.reservoir.grow()  # todo change hidden size on list or so
         self.hidden_size = self.reservoir.hidden_size
         self.readout = SVDReadout(self.hidden_size * len(self.reservoir.layers), self.output_dim, self.regularization)
