@@ -41,7 +41,7 @@ class ESNCellBase(nn.Module):
         return s.format(**self.__dict__)
 
     def check_forward_input(self, input: Tensor):
-        if input.size(1) != self.input_size:
+        if input.size()[-1] != self.input_size:
             raise RuntimeError(
                 "input has inconsistent input_size: got {}, expected {}".format(
                     input.size(1), self.input_size))
@@ -133,7 +133,10 @@ class ESNCell(ESNCellBase):
             self.bias_ih, self.bias_hh,
         )
         if self.IpGain is not None and self.IpBias is not None:
-            self.hx = self.activation(self.IpGain * pre_activation + self.IpBias, prev_state=self.hx)
+            self.hx = self.activation(
+                self.IpGain * pre_activation + self.IpBias,
+                prev_state=self.hx
+            )
         else:
             self.hx = self.activation(pre_activation, prev_state=self.hx)
 
@@ -174,14 +177,16 @@ class ESNCell(ESNCellBase):
 class SubreservoirCell(ESNCell):
     def __init__(self, input_size: int, bias: bool = True,
                  initializer: SubreservoirWeightInitializer = SubreservoirWeightInitializer(),
-                 activation: Activation = A.tanh(), requires_grad: bool = False, input_cell=False):
+                 activation: Activation = A.tanh(), requires_grad: bool = False, input_cell=False,
+                 ):
         super(SubreservoirCell, self).__init__(input_size,
                                                initializer.subreservoir_size,
                                                bias,
                                                initializer=initializer,
                                                num_chunks=1,
                                                activation=activation,
-                                               requires_grad=requires_grad)
+                                               requires_grad=requires_grad
+                                               )
         self.input_cell = input_cell
 
     def fix_input_layer(self, previous_cell: 'SubreservoirCell' = None):
@@ -204,7 +209,7 @@ class SubreservoirCell(ESNCell):
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=True,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
-                 activation: Activation = A.tanh()):
+                 activation: Activation = A.tanh(), include_input=False):
         super().__init__()
         self.activation = activation
         if num_layers > 0:
@@ -216,9 +221,14 @@ class DeepESNCell(nn.Module):
         self.bias = bias
         self.initializer = initializer
         self.activation = activation
+        self.include_input = include_input
 
     def forward(self, input: Tensor) -> Tensor:
-        result = torch.Tensor(input.size(0), sum([cell.hidden_size for cell in self.layers]))
+        size =sum([cell.hidden_size for cell in self.layers])
+        if self.include_input:
+            size +=self.input_size
+
+        result = torch.Tensor(input.size(0), size)
 
         for i in range(input.size(0)):
             cell_input = input[i]
@@ -226,7 +236,13 @@ class DeepESNCell(nn.Module):
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
-            result[i, :] = torch.cat(new_hidden_states, axis=1)  # todo check for multivariete
+            if self.include_input:
+                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
+            else:
+                result[i, :] = torch.cat(new_hidden_states, axis=1)
+
+        if self.include_input:
+            result[:,-self.input_size:] = input.view(input.size(0),-1)
 
         return result
 
@@ -261,7 +277,7 @@ class DeepESNCell(nn.Module):
     def assign_layers(self, input: Tensor, max_layers: int = 10, transient: int = 30,
                       tolerance: float = 0.01, size_increase=None, intristic_plasticity: bool = False, epochs: int = 10,
                       mean: float = 0.,
-                      variance: float = 0.1, learning_rate: float = 1e-4) -> List[SpectralCentroid]:
+                      variance: float = 0.1, learning_rate: float = 1e-4,max_neurons:int=10_000) -> List[SpectralCentroid]:
         in_training = True
         self.washout(input[:transient])
         mapped_states = self.forward(input[transient:])
@@ -271,7 +287,7 @@ class DeepESNCell(nn.Module):
             self.intristic_plasticity_pretrain(input, epochs=epochs, mean=mean, variance=variance,
                                                learning_rate=learning_rate)
 
-        while in_training and len(self.layers) <= max_layers:
+        while in_training and len(self.layers) <= max_layers and sum([l.hidden_size for l in self.layers]) < max_neurons:
             next_layer_deep = self._new_deep_layer()
 
             if intristic_plasticity:
@@ -311,7 +327,7 @@ class DeepESNCell(nn.Module):
                                                                                                new_centroid):
                     new_centroid, new_spread, next_layer = new_centroid_wide, new_spread_wide, next_layer_wide
                     next_layer_wide_better = True
-                    print('wide chosen')
+
 
             if M._spectral_distance_significant(actual_centroid, new_centroid, actual_spread, tolerance):
                 if next_layer_wide_better:
@@ -331,14 +347,19 @@ class DeepSubreservoirCell(DeepESNCell):
                  bias=True,
                  initializer: SubreservoirWeightInitializer = SubreservoirWeightInitializer(),
                  num_layers: int = 1,
-                 activation: Activation = A.tanh()):
-        super().__init__(input_size, None, bias, initializer, 0, activation)
+                 activation: Activation = A.tanh(),
+                 include_input:bool=False
+                 ):
+        super().__init__(input_size, None, bias, initializer, 0, activation,include_input=include_input)
         self.layers = [SubreservoirCell(input_size, bias, initializer, activation, input_cell=True)] + \
                       [SubreservoirCell(initializer.subreservoir_size, bias, initializer, activation) for _ in
                        range(1, num_layers)]
         self.subreservoir_size = initializer.subreservoir_size
         self.hidden_size = initializer.subreservoir_size
         self.initializer = initializer
+
+    def get_number_of_neurons(self):
+        return sum([l.hidden_size for l in self.layers])
 
     def grow(self):
         self.hidden_size += self.subreservoir_size
@@ -439,6 +460,9 @@ class DeepSubreservoirESN(ESNBase):
         self.output_dim = output_dim
         self.regularization = regularization
         self.hidden_size = self.reservoir.hidden_size
+
+    def get_number_of_neurons(self):
+        return self.reservoir.get_number_of_neurons()
 
     def grow(self):
         self.reservoir.grow()  # todo change hidden size on list or so

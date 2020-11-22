@@ -13,7 +13,7 @@ class Activation(nn.Module):
         self.leaky_rate = leaky_rate
         self.activation_function = activation_function
 
-    def forward(self, pre_activation: Tensor, prev_state: Tensor=None) -> Tensor:
+    def forward(self, pre_activation: Tensor, prev_state: Tensor = None) -> Tensor:
         hx_next = self.activation_function(pre_activation)
         # leaky rate == 1.0 means no leaky_rate at all. hx_prev gets zeroed
         return M.leaky(hx_prev=prev_state, hx_next=hx_next, leaky_rate=self.leaky_rate)
@@ -37,5 +37,12 @@ def linear(leaky_rate: float = 1.0) -> Activation:
 def self_normalizing(leaky_rate: float = 1.0, spectral_radius: float = 0.9) -> Activation:
     def activation_function(input: Tensor) -> Tensor:
         return spectral_radius * M.spectral_normalize(input)
+
+    return Activation(activation_function=activation_function, leaky_rate=leaky_rate)
+
+
+def self_normalizing_default(leaky_rate: float = 1.0, spectral_radius: float = 0.9) -> Activation:
+    def activation_function(input: Tensor) -> Tensor:
+        return spectral_radius * (input / torch.norm(input))
 
     return Activation(activation_function=activation_function, leaky_rate=leaky_rate)
