@@ -135,3 +135,21 @@ def loader_explicit_ahead(path: str, test_size: int, ahead: int = 1, max_samples
         return load_train_test_ahead(path, test_size, ahead, max_samples)
 
     return loader_
+
+def norm_loader__(loader):
+    X, X_test, y, y_test = loader()
+
+    def coeff(X, X_test):
+        x = torch.cat([X, X_test]).squeeze().squeeze()
+        return torch.mean(x).item(), torch.max(x).item() - torch.min(x).item()
+
+    centr, spread = coeff(X, X_test)
+
+    def norm(X, centr, spread):
+        return (X - centr) / spread
+
+    def n(X):
+        return norm(X, centr, spread)
+
+    return n(X), n(X_test), n(y), n(y_test), centr, spread
+
