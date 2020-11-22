@@ -1,6 +1,5 @@
 from typing import List, Optional
 
-import enum
 import torch.nn
 from torch import Tensor
 
@@ -102,45 +101,6 @@ def dense(min_val=-1, max_val=1, spectral_radius=0.9) -> Initializer:
         .scale(factor=spectral_radius)
 
 
-class GrowingType(enum.Enum):
-    Reservoir = 1
-    Input = 2
-    Bias = 3
-    InputPad = 4
-
-
-class SubreservoirInitializer(object):
-    # todo generate without svd
-    def __init__(self, growing_type: GrowingType, subreservoir_size: int = 10,
-                 initializer: CompositeInitializer = dense()):
-        self.growing_type = growing_type
-        self.initalizer = initializer
-        self.subreservoir_size = subreservoir_size
-
-    def __call__(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
-        if reference_weight is None:
-            return self.initalizer(weight)
-        else:
-            if self.growing_type == GrowingType.Reservoir:
-                result = torch.zeros_like(weight)
-                next_subreservoir = self.initalizer(torch.Tensor(self.subreservoir_size, self.subreservoir_size))
-                result[:reference_weight.size(0), :reference_weight.size(1)] = reference_weight
-                result[reference_weight.size(0):, reference_weight.size(1):] = next_subreservoir
-                return result
-
-            elif self.growing_type == GrowingType.Input:
-                input_weight_extension = self.initalizer(torch.Tensor(self.subreservoir_size, reference_weight.size(1)))
-                return torch.cat([reference_weight, input_weight_extension], axis=0)
-
-            elif self.growing_type == GrowingType.InputPad:  # todo refactor
-                input_weight_extension = self.initalizer(torch.Tensor(weight.size(1),self.subreservoir_size))
-                return torch.cat([reference_weight, input_weight_extension], axis=1)
-
-            elif self.growing_type == GrowingType.Bias:
-                bias_extension = self.initalizer(torch.Tensor(self.subreservoir_size))
-                return torch.cat([reference_weight, bias_extension])
-
-
 def uniform(min_val=-1, max_val=1) -> Initializer:
     return CompositeInitializer().uniform(min_val=min_val, max_val=max_val)
 
@@ -175,24 +135,3 @@ class WeightInitializer(object):
 
     def init_bias_hh(self, bias: Tensor, reference_bias: Optional[Tensor] = None) -> Tensor:
         return self.bias_hh_init(bias, reference_bias)
-
-
-class SubreservoirWeightInitializer(WeightInitializer):
-    def __init__(self,
-                 subreservoir_size: int = 10,
-                 weight_ih_init: Initializer = uniform(),
-                 weight_hh_init: Initializer = dense(),
-                 bias_ih_init: Initializer = uniform(),
-                 bias_hh_init: Initializer = uniform()):
-        super().__init__(
-            SubreservoirInitializer(GrowingType.Input, subreservoir_size, weight_ih_init),
-            SubreservoirInitializer(GrowingType.Reservoir, subreservoir_size, weight_hh_init),
-            SubreservoirInitializer(GrowingType.Bias, subreservoir_size, bias_ih_init),
-            SubreservoirInitializer(GrowingType.Bias, subreservoir_size, bias_hh_init)
-        )
-        self.subreservoir_size = subreservoir_size
-        self.weight_ih_pad = SubreservoirInitializer(GrowingType.InputPad, subreservoir_size,
-                                                     weight_ih_init)
-
-    def init_weight_ih_pad(self, weight: Tensor, reference_weight: Optional[Tensor] = None) -> Tensor:
-        return self.weight_ih_pad(weight, reference_weight)
