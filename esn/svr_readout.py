@@ -30,3 +30,6 @@ class SVDReadout(nn.Module):
         d_UT_y = d * UTy
 
         return (V @ d_UT_y).T
+
+    def to_cuda(self):
+        self.readout.to('cuda')

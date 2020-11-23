@@ -24,7 +24,6 @@ class ESNCellBase(nn.Module):
         self.bias = bias
         self.initializer = initializer
         self.weight_ih, self.weight_hh, self.bias_ih, self.bias_hh = None, None, None, None
-        self.IpGain, self.IpBias = None, None
         self.init_parameters()
 
     def extra_repr(self):
@@ -127,13 +126,8 @@ class ESNCell(ESNCellBase):
             self.weight_ih, self.weight_hh,
             self.bias_ih, self.bias_hh,
         )
-        if self.IpGain is not None and self.IpBias is not None:
-            self.hx = self.activation(
-                self.IpGain * pre_activation + self.IpBias,
-                prev_state=self.hx
-            )
-        else:
-            self.hx = self.activation(pre_activation, prev_state=self.hx)
+
+        self.hx = self.activation(pre_activation, prev_state=self.hx)
 
     def reset_hidden(self):
         self.hx = None
@@ -155,13 +149,14 @@ class DeepESNCell(nn.Module):
         self.initializer = initializer
         self.activation = activation
         self.include_input = include_input
+        self.gpu_enabled = False
 
     def forward(self, input: Tensor) -> Tensor:
-        size =sum([cell.hidden_size for cell in self.layers])
+        size = sum([cell.hidden_size for cell in self.layers])
         if self.include_input:
-            size +=self.input_size
+            size += self.input_size
 
-        result = torch.Tensor(input.size(0), size)
+        result = torch.empty((input.size(0), size), device=input.device)
 
         for i in range(input.size(0)):
             cell_input = input[i]
@@ -175,7 +170,7 @@ class DeepESNCell(nn.Module):
                 result[i, :] = torch.cat(new_hidden_states, axis=1)
 
         if self.include_input:
-            result[:,-self.input_size:] = input.view(input.size(0),-1)
+            result[:, -self.input_size:] = input.view(input.size(0), -1)
 
         return result
 
@@ -188,3 +183,8 @@ class DeepESNCell(nn.Module):
     def reset_hidden(self):
         for layer in self.layers:
             layer.reset_hidden()
+
+    def to_cuda(self):
+        for layer in self.layers:
+            layer.to('cuda')
+        self.gpu_enabled = True
