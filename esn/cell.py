@@ -134,7 +134,7 @@ class ESNCell(ESNCellBase):
 
 
 class DeepESNCell(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, bias=True,
+    def __init__(self, input_size: int, hidden_size: int, bias=False,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
                  activation: Activation = A.tanh(), include_input=False):
         super().__init__()

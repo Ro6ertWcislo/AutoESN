@@ -107,7 +107,7 @@ def uniform(min_val=-1, max_val=1) -> Initializer:
 
 def default_hidden(density=0.1, spectral_radius=0.9):
     return CompositeInitializer() \
-        .xavier_uniform() \
+        .uniform() \
         .sparse(density=density) \
         .spectral_normalize() \
         .scale(factor=spectral_radius)

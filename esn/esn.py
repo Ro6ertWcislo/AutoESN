@@ -9,7 +9,7 @@ from esn.svr_readout import SVDReadout
 
 class ESNBase(nn.Module):
     def __init__(self, reservoir: nn.Module, readout: nn.Module,
-                 transient: int = 30):  # todo typy poprawic. module jest zle
+                 transient: int = 30):
         super(ESNBase, self).__init__()
         self.transient = transient
         self.initial_state = True
