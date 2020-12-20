@@ -39,7 +39,7 @@ def self_normalizing(leaky_rate: float = 1.0, spectral_radius: float = 0.9) -> A
     return Activation(activation_function=activation_function, leaky_rate=leaky_rate)
 
 
-def self_normalizing_default(leaky_rate: float = 0.9, spectral_radius: float = 500.0) -> Activation:
+def self_normalizing_default(leaky_rate: float = 0.9, spectral_radius: float = 100.0) -> Activation:
     def activation_function(input: Tensor) -> Tensor:
         return spectral_radius * (input / torch.norm(input))
 

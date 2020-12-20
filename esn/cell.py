@@ -57,7 +57,6 @@ class ESNCellBase(nn.Module):
         self.weight_ih = nn.Parameter(
             data=self.initializer.init_weight_ih(
                 weight=torch.Tensor(self.hidden_size, self.input_size),
-                reference_weight=self.weight_ih
             ),
             requires_grad=self.requires_grad
         )
@@ -65,7 +64,6 @@ class ESNCellBase(nn.Module):
         self.weight_hh = nn.Parameter(
             data=self.initializer.init_weight_hh(
                 weight=torch.Tensor(self.hidden_size, self.hidden_size),
-                reference_weight=self.weight_hh
             ),
             requires_grad=self.requires_grad
         )
@@ -74,14 +72,12 @@ class ESNCellBase(nn.Module):
             self.bias_ih = nn.Parameter(
                 data=self.initializer.init_bias_ih(
                     bias=torch.Tensor(self.hidden_size),
-                    reference_bias=self.bias_ih
                 ),
                 requires_grad=self.requires_grad
             )
             self.bias_hh = nn.Parameter(
                 data=self.initializer.init_bias_hh(
                     bias=torch.Tensor(self.hidden_size),
-                    reference_bias=self.bias_hh
                 ),
                 requires_grad=self.requires_grad
             )
