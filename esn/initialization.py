@@ -170,7 +170,7 @@ def configuration_model(weight: Tensor, configuration: List[int]):
 def expander(weight: Tensor, expander_name: str = "paley"):
     expanders = {
         "mgg": lambda n: nx.margulis_gabber_galil_graph(int(math.sqrt(n))),
-        # margulis_gabber_galil_graph - weight size must have integer square
+        # margulis_gabber_galil_graph - weight size must have integer square root
         "chordal": nx.chordal_cycle_graph,  # chordal_cycle_graph - weight size must be prime number
         "paley": nx.paley_graph  # paley_graph  - weight size must be prime number
 

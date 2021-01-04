@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 import torch
 from torch import nn, Tensor
 
@@ -16,7 +18,7 @@ class ESNCellBase(nn.Module):
 
     def __init__(self, input_size: int, hidden_size: int, bias: bool,
                  initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
-                 requires_grad: bool = False):
+                 requires_grad: bool = False, init:bool=True):
         super(ESNCellBase, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -24,7 +26,8 @@ class ESNCellBase(nn.Module):
         self.bias = bias
         self.initializer = initializer
         self.weight_ih, self.weight_hh, self.bias_ih, self.bias_hh = None, None, None, None
-        self.init_parameters()
+        if init:
+            self.init_parameters()
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
@@ -132,13 +135,18 @@ class ESNCell(ESNCellBase):
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=False,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
-                 activation: Activation = A.tanh(), include_input=False):
+                 activation: Activation = 'default', include_input=False,leaky_rate=1.0):
         super().__init__()
-        self.activation = activation
+        if activation == 'default':
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((num_layers - i) / num_layers)) for i in
+                                range(num_layers)]
+        else:
+            self.activation = [activation]*num_layers
         if num_layers > 0:
-            self.layers = [ESNCell(input_size, hidden_size, bias, initializer, activation)] + \
-                          [ESNCell(hidden_size, hidden_size, bias, initializer, activation) for _ in
+            self.layers = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[0])] + \
+                          [ESNCell(hidden_size, hidden_size, bias, initializer, self.activation[i]) for i in
                            range(1, num_layers)]
+
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.bias = bias
@@ -184,3 +192,156 @@ class DeepESNCell(nn.Module):
         for layer in self.layers:
             layer.to('cuda')
         self.gpu_enabled = True
+
+
+class GroupedESNCell(ESNCellBase):
+    def __init__(self, input_size: int, hidden_size: int, groups: int, activations='default', bias: bool = False,
+                 initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
+                 requires_grad: bool = False,leaky_rate = 1.0, include_input:bool =False):
+        super(GroupedESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=num_chunks,
+                                         requires_grad=requires_grad,init=False)
+        self.groups = groups
+        self.init_parameters()
+        self.requires_grad = requires_grad
+        if activations == 'default':
+            self.activations = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
+                                range(groups)]
+
+        self.hx = None
+        self.include_input=include_input
+
+    def init_parameters(self):
+        # todo  change to register params and receive just size?
+        # todo chunks, what about chunks
+        self.weight_ih = nn.Parameter(
+            data=self.initializer.init_weight_ih(
+                weight=torch.Tensor(self.hidden_size, self.input_size),
+            ),
+            requires_grad=self.requires_grad
+        )
+
+        self.weight_hh = [nn.Parameter(
+            data=self.initializer.init_weight_hh(
+                weight=torch.Tensor(self.hidden_size, self.hidden_size),
+            ),
+            requires_grad=self.requires_grad
+        ) for _ in range(self.groups)]
+
+        if self.bias:
+            self.bias_ih = nn.Parameter(
+                data=self.initializer.init_bias_ih(
+                    bias=torch.Tensor(self.hidden_size),
+                ),
+                requires_grad=self.requires_grad
+            )
+            self.bias_hh = [nn.Parameter(
+                data=self.initializer.init_bias_hh(
+                    bias=torch.Tensor(self.hidden_size),
+                ),
+                requires_grad=self.requires_grad
+            ) for _ in range(self.groups)]
+        else:
+            self.bias_hh = [None] * self.groups
+
+    def forward(self, input: Tensor) -> Tensor:
+        size = self.hidden_size*self.groups
+        if self.include_input:
+            size += self.input_size
+
+        if self.hx is None:
+            self.hx = [torch.zeros(self.input_size, self.hidden_size, dtype=input.dtype, device=input.device,
+                                   requires_grad=self.requires_grad) for _ in range(self.groups)] # todo na pewno self.input_size?
+
+        result = torch.empty((input.size(0), size), device=input.device)
+
+        for i in range(input.size(0)):
+            cell_input = input[i]
+            new_hidden_states = []
+            for layer_num in range(self.groups):
+                new_state = self._forward(cell_input, layer_num)
+                new_hidden_states.append(new_state)
+            if self.include_input:
+                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
+            else:
+                result[i, :] = torch.cat(new_hidden_states, axis=1)
+
+        if self.include_input:
+            result[:, -self.input_size:] = input.view(input.size(0), -1)
+        return result
+
+    def _forward(self, input: Tensor, layer_num: int):
+        pre_activation = M.linear(
+            input, self.hx[layer_num],
+            self.weight_ih, self.weight_hh[layer_num],
+            self.bias_ih, self.bias_hh[layer_num],
+        )
+
+        self.hx[layer_num] = self.activations[layer_num](pre_activation, prev_state=self.hx[layer_num])
+        return self.hx[layer_num]
+
+    def reset_hidden(self):
+        self.hx = None
+
+    def washout(self, input: Tensor):
+        if self.hx is None:
+            self.hx = [torch.zeros(self.input_size, self.hidden_size, dtype=input.dtype, device=input.device,
+                                   requires_grad=self.requires_grad) for _ in range(self.groups)]
+        for i in range(input.size(0)):
+            cell_input = input[i]
+            for layer_num in range(self.groups):
+                self._forward(cell_input, layer_num)
+
+
+class GroupOfESNCell(nn.Module):
+    def __init__(self, input_size: int, hidden_size: int, groups: int, activations='default', bias: bool = False,
+                 initializer: WeightInitializer = WeightInitializer(),include_input:bool=False,
+                 requires_grad: bool = False,leaky_rate = 1.0):
+        super(GroupOfESNCell, self).__init__()
+        self.requires_grad = requires_grad
+        if activations == 'default':
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((groups - i) / groups)) for i in
+                                range(groups)]
+        self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
+                       range(groups)]
+
+        self.input_size = input_size
+        self.hidden_size = hidden_size
+        self.bias = bias
+        self.initializer = initializer
+        self.include_input = include_input
+        self.gpu_enabled = False
+
+    def forward(self, input: Tensor) -> Tensor:
+        size = sum([cell.hidden_size for cell in self.groups])
+        if self.include_input:
+            size += self.input_size
+
+        result = torch.empty((input.size(0), size), device=input.device)
+
+        for i in range(input.size(0)):
+            cell_input = input[i]
+            new_hidden_states = []
+
+            for esn_cell in self.groups:
+                new_state = esn_cell(cell_input)
+                new_hidden_states.append(new_state)
+
+            if self.include_input:
+                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
+            else:
+                result[i, :] = torch.cat(new_hidden_states, axis=1)
+
+        if self.include_input:
+            result[:, -self.input_size:] = input.view(input.size(0), -1)
+
+        return result
+
+    def washout(self, input: Tensor):
+        for i in range(input.size(0)):
+            cell_input = input[i]
+            for esn_cell in self.groups:
+                esn_cell(cell_input)
+
+# class AveragedESNCell: todo later
+#     def __init__(self):
+#
