@@ -191,6 +191,9 @@ def subreservoir(weight: Tensor, k=3):
                                                                                                           subres_size)
     return weight * mask
 
+def init_seed(weight: Tensor, seed:int=42):
+    set_all_seeds(seed)
+    return weight
 
 def _xavier_uniform() -> Initializer:
     def __uniform(weight: Tensor) -> Tensor:
@@ -279,6 +282,10 @@ class CompositeInitializer(object):
 
     def with_seed(self, seed):
         set_all_seeds(seed)
+        return self
+    
+    def init_seed(self, seed):
+        self.initializers.append(wrap(init_seed, seed))
         return self
 
     def __call__(self, weight: Tensor) -> Tensor:
