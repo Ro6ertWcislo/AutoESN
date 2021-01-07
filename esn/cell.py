@@ -195,7 +195,7 @@ class DeepESNCell(nn.Module):
 
 
 class GroupedESNCell(ESNCellBase):
-    def __init__(self, input_size: int, hidden_size: int, groups: int, activations='default', bias: bool = False,
+    def __init__(self, input_size: int, hidden_size: int, groups: int, activation='default', bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
                  requires_grad: bool = False,leaky_rate = 1.0, include_input:bool =False):
         super(GroupedESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=num_chunks,
@@ -203,12 +203,13 @@ class GroupedESNCell(ESNCellBase):
         self.groups = groups
         self.init_parameters()
         self.requires_grad = requires_grad
-        if activations == 'default':
-            self.activations = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
+        if activation == 'default':
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
                                 range(groups)]
-
+        else:
+            self.activation = [activation] * groups
         self.hx = None
-        self.include_input=include_input
+        self.include_input = include_input
 
     def init_parameters(self):
         # todo  change to register params and receive just size?
@@ -276,7 +277,7 @@ class GroupedESNCell(ESNCellBase):
             self.bias_ih, self.bias_hh[layer_num],
         )
 
-        self.hx[layer_num] = self.activations[layer_num](pre_activation, prev_state=self.hx[layer_num])
+        self.hx[layer_num] = self.activation[layer_num](pre_activation, prev_state=self.hx[layer_num])
         return self.hx[layer_num]
 
     def reset_hidden(self):
@@ -293,14 +294,16 @@ class GroupedESNCell(ESNCellBase):
 
 
 class GroupOfESNCell(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, groups: int, activations='default', bias: bool = False,
+    def __init__(self, input_size: int, hidden_size: int, groups: int, activation='default', bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(),include_input:bool=False,
                  requires_grad: bool = False,leaky_rate = 1.0):
         super(GroupOfESNCell, self).__init__()
         self.requires_grad = requires_grad
-        if activations == 'default':
+        if activation == 'default':
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((groups - i) / groups)) for i in
                                 range(groups)]
+        else:
+            self.activation = [activation] * groups
         self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
                        range(groups)]
 
