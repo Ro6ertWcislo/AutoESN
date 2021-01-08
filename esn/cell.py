@@ -299,12 +299,17 @@ class GroupOfESNCell(nn.Module):
                  requires_grad: bool = False,leaky_rate = 1.0):
         super(GroupOfESNCell, self).__init__()
         self.requires_grad = requires_grad
+        num_groups = groups if type(groups)==int else len(groups)
+        print(num_groups)
         if activation == 'default':
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((groups - i) / groups)) for i in
-                                range(groups)]
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((num_groups - i) / num_groups)) for i in
+                                range(num_groups)]
         else:
-            self.activation = [activation] * groups
-        self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
+            self.activation = [activation] * num_groups
+        if type(groups) != int:
+          self.groups = groups
+        else:
+          self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
                        range(groups)]
 
         self.input_size = input_size
@@ -344,7 +349,3 @@ class GroupOfESNCell(nn.Module):
             cell_input = input[i]
             for esn_cell in self.groups:
                 esn_cell(cell_input)
-
-# class AveragedESNCell: todo later
-#     def __init__(self):
-#
