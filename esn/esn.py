@@ -78,3 +78,13 @@ class FlexDeepESN(ESNBase):
             readout=readout,
             transient=transient)
 
+class GroupDeepHomo(ESNBase):
+    def __init__(self, input_size: int = 1, hidden_size: int = 250, output_dim: int = 1, bias: bool = False,
+                 initializer: WeightInitializer = WeightInitializer(), groups=2,num_layers=(2,2),
+                 activation: Activation = "default", transient: int = 30, regularization: float = 1.,leaky_rate=1.0):
+        super().__init__(
+            reservoir=GroupOfESNCell(input_size, hidden_size, [
+                      DeepESNCell(input_size, hidden_size, bias, initializer, layers, activation,leaky_rate=leaky_rate) for layers in num_layers
+            ], activation, bias, initializer ,leaky_rate=leaky_rate),
+            readout=SVDReadout(hidden_size * groups, output_dim, regularization=regularization),
+            transient=transient)

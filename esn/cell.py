@@ -54,6 +54,9 @@ class ESNCellBase(nn.Module):
                 "hidden{} has inconsistent hidden_size: got {}, expected {}".format(
                     hidden_label, hx.size(1), self.hidden_size))
 
+    def get_hidden_size(self):
+        return self.hidden_size
+
     def init_parameters(self):
         # todo  change to register params and receive just size?
         # todo chunks, what about chunks
@@ -105,6 +108,8 @@ class ESNCell(ESNCellBase):
                                   requires_grad=self.requires_grad)
         # self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
 
+        if input.ndim==1:
+            input = input.unsqueeze(1).unsqueeze(1)
         if input.ndim == 2:
             if input.size(0) > 1 and no_chunk:
                 # for now change on warining
@@ -130,6 +135,7 @@ class ESNCell(ESNCellBase):
 
     def reset_hidden(self):
         self.hx = None
+
 
 
 class DeepESNCell(nn.Module):
@@ -183,6 +189,9 @@ class DeepESNCell(nn.Module):
             cell_input = input[i]
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
+
+    def get_hidden_size(self):
+        return sum([l.hidden_size for l in self.layers])
 
     def reset_hidden(self):
         for layer in self.layers:
@@ -294,7 +303,7 @@ class GroupedESNCell(ESNCellBase):
 
 
 class GroupOfESNCell(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, groups: int, activation='default', bias: bool = False,
+    def __init__(self, input_size: int, hidden_size: int, groups, activation='default', bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(),include_input:bool=False,
                  requires_grad: bool = False,leaky_rate = 1.0):
         super(GroupOfESNCell, self).__init__()
@@ -320,7 +329,7 @@ class GroupOfESNCell(nn.Module):
         self.gpu_enabled = False
 
     def forward(self, input: Tensor) -> Tensor:
-        size = sum([cell.hidden_size for cell in self.groups])
+        size = sum([cell.get_hidden_size() for cell in self.groups])
         if self.include_input:
             size += self.input_size
 
