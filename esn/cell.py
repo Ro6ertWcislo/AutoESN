@@ -146,6 +146,9 @@ class DeepESNCell(nn.Module):
         if activation == 'default':
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((num_layers - i) / num_layers)) for i in
                                 range(num_layers)]
+        elif activation == 'default_tanh':
+            self.activation = [A.tanh(leaky_rate=leaky_rate*((num_layers - i) / num_layers)) for i in
+                                range(num_layers)]
         else:
             self.activation = [activation]*num_layers
         if num_layers > 0:
@@ -214,6 +217,10 @@ class GroupedESNCell(ESNCellBase):
         self.requires_grad = requires_grad
         if activation == 'default':
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
+                                range(groups)]
+            
+        elif activation == 'default_tanh':
+            self.activation = [A.tanh(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
                                 range(groups)]
         else:
             self.activation = [activation] * groups
@@ -313,6 +320,9 @@ class GroupOfESNCell(nn.Module):
         if activation == 'default':
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((num_groups - i) / num_groups)) for i in
                                 range(num_groups)]
+        elif activation == 'default_tanh':
+            self.activation = [A.tanh(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
+                                range(groups)]
         else:
             self.activation = [activation] * num_groups
         if type(groups) != int:
