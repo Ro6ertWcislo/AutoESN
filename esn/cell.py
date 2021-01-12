@@ -230,7 +230,7 @@ class GroupedESNCell(ESNCellBase):
             acts = [act_radius*((num_layers - i) / num_layers) for i in range(num_layers)]
             if act_grow == 'incr':
               acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate),spectral_radius=radius  for radius in acts ]  
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]  
         elif activation == 'default_tanh':
             self.activation = [A.tanh(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
                                 range(groups)]
@@ -338,7 +338,7 @@ class GroupOfESNCell(nn.Module):
             acts = [act_radius*((num_layers - i) / num_layers) for i in range(num_layers)]
             if act_grow == 'incr':
               acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate),spectral_radius=radius  for radius in acts ]
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]
         elif activation == 'default_tanh':
             self.activation = [A.tanh(leaky_rate=leaky_rate*((num_groups - i) / num_groups)) for i in
                                 range(num_groups)]
