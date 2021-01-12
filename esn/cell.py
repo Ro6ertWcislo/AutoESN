@@ -227,7 +227,7 @@ class GroupedESNCell(ESNCellBase):
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
                                 range(groups)]
         elif activation == 'default_act':
-            acts = [act_radius*((num_layers - i) / num_layers) for i in range(num_layers)]
+            acts = [act_radius*((groups - i) / groups) for i in range(groups)]
             if act_grow == 'incr':
               acts.reverse()
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]  
@@ -335,7 +335,7 @@ class GroupOfESNCell(nn.Module):
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((num_groups - i) / num_groups)) for i in
                                 range(num_groups)]
         elif activation == 'default_act':
-            acts = [act_radius*((num_layers - i) / num_layers) for i in range(num_layers)]
+            acts = [act_radius*((num_groups - i) / num_groups) for i in range(num_groups)]
             if act_grow == 'incr':
               acts.reverse()
             self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]
