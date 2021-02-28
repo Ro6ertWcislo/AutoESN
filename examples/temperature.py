@@ -1,20 +1,20 @@
 from matplotlib import pyplot as plt
 
 import utils.dataset_loader as dl
-from esn import activation, initialization
+from esn.reservoir import activation, initialization
 from esn.esn import DeepESN
-from esn.initialization import CompositeInitializer
-from esn.util import NRMSELoss
+from esn.reservoir.initialization import CompositeInitializer
+from esn.reservoir.util import NRMSELoss
 
 norm = True
-mg17clean = dl.loader_explicit('datasets/temperature_day.csv', test_size=600)
+temp = dl.loader_explicit('datasets/temperature_day.csv', test_size=600)
 nrmse = NRMSELoss()
 
 if norm:
-    X, X_test, y, y_test, centr, spread = dl.norm_loader__(mg17clean)
+    X, X_test, y, y_test, centr, spread = dl.norm_loader__(temp)
     y_test = spread * y_test + centr
 else:
-    X, X_test, y, y_test = mg17clean()
+    X, X_test, y, y_test = temp()
 
 esn = DeepESN(
     hidden_size=300,
@@ -28,7 +28,6 @@ esn = DeepESN(
     )
 
 )
-esn.fit(X, y)
 esn.fit(X, y)
 
 if norm:

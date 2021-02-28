@@ -1,12 +1,12 @@
 import math
-from typing import List, Optional, Union
+from typing import List, Union
 
 import networkx as nx
 import torch.nn
 from torch import Tensor
 import numpy as np
 
-from esn.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
+from esn.reservoir.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
 from utils.math import spectral_normalize
 from utils.types import Initializer
 

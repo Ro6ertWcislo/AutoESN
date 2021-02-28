@@ -1,11 +1,9 @@
-from typing import List, Tuple
-
 import torch
 from torch import nn, Tensor
 
-from esn import activation as A
-from esn.activation import Activation
-from esn.initialization import WeightInitializer
+from esn.reservoir import activation as A
+from esn.reservoir.activation import Activation
+from esn.reservoir.initialization import WeightInitializer
 from utils import math as M
 
 
@@ -18,7 +16,7 @@ class ESNCellBase(nn.Module):
 
     def __init__(self, input_size: int, hidden_size: int, bias: bool,
                  initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
-                 requires_grad: bool = False, init:bool=True):
+                 requires_grad: bool = False, init: bool = True):
         super(ESNCellBase, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -108,7 +106,7 @@ class ESNCell(ESNCellBase):
                                   requires_grad=self.requires_grad)
         # self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
 
-        if input.ndim==1:
+        if input.ndim == 1:
             input = input.unsqueeze(1).unsqueeze(1)
         if input.ndim == 2:
             if input.size(0) > 1 and no_chunk:
@@ -137,32 +135,20 @@ class ESNCell(ESNCellBase):
         self.hx = None
 
 
-
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=False,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
-                 activation: Activation = 'default', include_input=False,leaky_rate=1.0,act_radius=100,act_grow='decr'):
+                 activation: Activation = 'default', include_input=False):
         super().__init__()
-        if activation == 'default':
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((num_layers - i) / num_layers),spectral_radius=act_radius) for i in
-                                range(num_layers)]
-        elif activation == 'default_act':
-            acts = [act_radius*((num_layers - i) / num_layers) for i in range(num_layers)]
-            if act_grow == 'incr':
-              acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]
-        elif activation == 'default_tanh':
-            self.activation = [A.tanh(leaky_rate=leaky_rate*((num_layers - i) / num_layers)) for i in
-                                range(num_layers)]
-        elif type(activation) != list:
-            self.activation = [activation]*num_layers
+        if type(activation) != list:
+            self.activation = [activation] * num_layers
         else:
-          self.activation = activation
+            self.activation = activation
 
         self.layers = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[0])]
         if num_layers > 1:
-          self.layers += [ESNCell(hidden_size, hidden_size, bias, initializer, self.activation[i]) for i in
-                           range(1, num_layers)]
+            self.layers += [ESNCell(hidden_size, hidden_size, bias, initializer, self.activation[i]) for i in
+                            range(1, num_layers)]
 
         self.input_size = input_size
         self.hidden_size = hidden_size
@@ -217,27 +203,32 @@ class DeepESNCell(nn.Module):
 class GroupedESNCell(ESNCellBase):
     def __init__(self, input_size: int, hidden_size: int, groups: int, activation='default', bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
-                 requires_grad: bool = False,leaky_rate = 1.0, include_input:bool =False,act_radius=100,act_grow='decr'):
-        super(GroupedESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer, num_chunks=num_chunks,
-                                         requires_grad=requires_grad,init=False)
+                 requires_grad: bool = False, leaky_rate=1.0, include_input: bool = False, act_radius=100,
+                 act_grow='decr'):
+        super(GroupedESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer,
+                                             num_chunks=num_chunks,
+                                             requires_grad=requires_grad, init=False)
         self.groups = groups
         self.init_parameters()
         self.requires_grad = requires_grad
         if activation == 'default':
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate*((groups - i) / groups),spectral_radius=act_radius) for i in
-                                range(groups)]
+            self.activation = [
+                A.self_normalizing_default(leaky_rate=leaky_rate * ((groups - i) / groups), spectral_radius=act_radius)
+                for i in
+                range(groups)]
         elif activation == 'default_act':
-            acts = [act_radius*((groups - i) / groups) for i in range(groups)]
+            acts = [act_radius * ((groups - i) / groups) for i in range(groups)]
             if act_grow == 'incr':
-              acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]  
+                acts.reverse()
+            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate, spectral_radius=radius) for radius in
+                               acts]
         elif activation == 'default_tanh':
-            self.activation = [A.tanh(leaky_rate=leaky_rate*((groups - i) / groups)) for i in
-                                range(groups)]
+            self.activation = [A.tanh(leaky_rate=leaky_rate * ((groups - i) / groups)) for i in
+                               range(groups)]
         elif type(activation) != list:
-            self.activation = [activation]*groups
+            self.activation = [activation] * groups
         else:
-          self.activation = activation
+            self.activation = activation
         self.hx = None
         self.include_input = include_input
 
@@ -275,13 +266,14 @@ class GroupedESNCell(ESNCellBase):
             self.bias_hh = [None] * self.groups
 
     def forward(self, input: Tensor) -> Tensor:
-        size = self.hidden_size*self.groups
+        size = self.hidden_size * self.groups
         if self.include_input:
             size += self.input_size
 
         if self.hx is None:
             self.hx = [torch.zeros(self.input_size, self.hidden_size, dtype=input.dtype, device=input.device,
-                                   requires_grad=self.requires_grad) for _ in range(self.groups)] # todo na pewno self.input_size?
+                                   requires_grad=self.requires_grad) for _ in
+                       range(self.groups)]  # todo na pewno self.input_size?
 
         result = torch.empty((input.size(0), size), device=input.device)
 
@@ -324,33 +316,22 @@ class GroupedESNCell(ESNCellBase):
 
 
 class GroupOfESNCell(nn.Module):
-    def __init__(self, input_size: int, hidden_size: int, groups, activation='default', bias: bool = False,
-                 initializer: WeightInitializer = WeightInitializer(),include_input:bool=False,
-                 requires_grad: bool = False,leaky_rate = 1.0,act_radius=100,act_grow='decr'):
+    def __init__(self, input_size: int, hidden_size: int, groups, activation=A.self_normalizing_default(),
+                 bias: bool = False,
+                 initializer: WeightInitializer = WeightInitializer(), include_input: bool = False,
+                 requires_grad: bool = False):
         super(GroupOfESNCell, self).__init__()
         self.requires_grad = requires_grad
-        num_groups = groups if type(groups)==int else len(groups)
-        print(num_groups)
-        if activation == 'default':
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate* ((num_groups - i) / num_groups),spectral_radius=act_radius) for i in
-                                range(num_groups)]
-        elif activation == 'default_act':
-            acts = [act_radius*((num_groups - i) / num_groups) for i in range(num_groups)]
-            if act_grow == 'incr':
-              acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate,spectral_radius=radius)  for radius in acts ]
-        elif activation == 'default_tanh':
-            self.activation = [A.tanh(leaky_rate=leaky_rate*((num_groups - i) / num_groups)) for i in
-                                range(num_groups)]
-        elif type(activation) != list:
-            self.activation = [activation]*num_groups
+        num_groups = groups if type(groups) == int else len(groups)
+        if type(activation) != list:
+            self.activation = [activation] * num_groups
         else:
-          self.activation = activation
+            self.activation = activation
         if type(groups) != int:
-          self.groups = groups
+            self.groups = groups
         else:
-          self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
-                       range(groups)]
+            self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
+                           range(groups)]
 
         self.input_size = input_size
         self.hidden_size = hidden_size

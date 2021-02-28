@@ -1,10 +1,10 @@
 from torch import nn, Tensor
 
-from esn import activation as A
-from esn.activation import Activation
-from esn.cell import DeepESNCell, GroupedESNCell, GroupOfESNCell
-from esn.initialization import WeightInitializer
-from esn.svr_readout import SVDReadout
+from esn.readout.svr_readout import SVDReadout
+from esn.reservoir import activation as A
+from esn.reservoir.activation import Activation
+from esn.reservoir.cell import DeepESNCell, GroupOfESNCell
+from esn.reservoir.initialization import WeightInitializer
 
 
 class ESNBase(nn.Module):
@@ -44,32 +44,22 @@ class ESNBase(nn.Module):
 class DeepESN(ESNBase):
     def __init__(self, input_size: int = 1, hidden_size: int = 500, output_dim: int = 1, bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(), num_layers=2,
-                 activation="default", transient: int = 30, regularization: float = 1.,leaky_rate=1.0,act_radius=100,act_grow='decr'):
+                 activation=A.self_normalizing_default(), transient: int = 30, regularization: float = 1.,
+                 leaky_rate=1.0, act_radius=100,
+                 act_grow='decr'):
         super().__init__(
-            reservoir=DeepESNCell(input_size, hidden_size, bias, initializer, num_layers, activation,leaky_rate=leaky_rate
-            ,act_radius=act_radius,act_grow=act_grow),
+            reservoir=DeepESNCell(input_size, hidden_size, bias, initializer, num_layers, activation),
             readout=SVDReadout(hidden_size * num_layers, output_dim, regularization=regularization),
             transient=transient)
 
-class GroupedESN(ESNBase): # todo
-    def __init__(self, input_size: int = 1, hidden_size: int = 250, output_dim: int = 1, bias: bool = False,
-                 initializer: WeightInitializer = WeightInitializer(), groups=4,
-                 activation: Activation = "default", transient: int = 30, regularization: float = 1.,leaky_rate=1.0
-                 ,act_radius=100,act_grow='decr'):
-        super().__init__(
-            reservoir=GroupedESNCell(input_size, hidden_size, groups, activation, bias, initializer ,leaky_rate=leaky_rate
-            ,act_radius=act_radius,act_grow=act_grow),
-            readout=SVDReadout(hidden_size * groups, output_dim, regularization=regularization),
-            transient=transient)
 
-class GroupOfESN(ESNBase): # todo
+class GroupOfESN(ESNBase):
     def __init__(self, input_size: int = 1, hidden_size: int = 250, output_dim: int = 1, bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(), groups=4,
-                 activation: Activation = "default", transient: int = 30, regularization: float = 1.,leaky_rate=1.0,
-                 act_radius=100,act_grow='decr'):
+                 activation: Activation = A.self_normalizing_default(), transient: int = 30,
+                 regularization: float = 1.):
         super().__init__(
-            reservoir=GroupOfESNCell(input_size, hidden_size, groups, activation, bias, initializer ,leaky_rate=leaky_rate
-            ,act_radius=act_radius,act_grow=act_grow),
+            reservoir=GroupOfESNCell(input_size, hidden_size, groups, activation, bias, initializer),
             readout=SVDReadout(hidden_size * groups, output_dim, regularization=regularization),
             transient=transient)
 
@@ -83,14 +73,14 @@ class FlexDeepESN(ESNBase):
             readout=readout,
             transient=transient)
 
-class GroupDeepHomo(ESNBase):
+
+class GroupedDeepESN(ESNBase):
     def __init__(self, input_size: int = 1, hidden_size: int = 250, output_dim: int = 1, bias: bool = False,
-                 initializer: WeightInitializer = WeightInitializer(), groups=2,num_layers=(2,2),
-                 activation: Activation = "default", transient: int = 30, regularization: float = 1.,leaky_rate=1.0,
-                 act_radius=100,act_grow='decr'):
+                 initializer: WeightInitializer = WeightInitializer(), groups=2, num_layers=(2, 2),
+                 activation: Activation =  A.self_normalizing_default(), transient: int = 30, regularization: float = 1.):
         super().__init__(
             reservoir=GroupOfESNCell(input_size, hidden_size, [
-                      DeepESNCell(input_size, hidden_size, bias, initializer, layers, activation,leaky_rate=leaky_rate,act_radius=act_radius,act_grow=act_grow) for layers in num_layers
-            ], activation, bias, initializer ,leaky_rate=leaky_rate),
+                DeepESNCell(input_size, hidden_size, bias, initializer, layers, activation) for layers in num_layers
+            ], activation, bias, initializer),
             readout=SVDReadout(hidden_size * groups, output_dim, regularization=regularization),
             transient=transient)

@@ -3,14 +3,12 @@ import random
 import time
 from typing import Tuple, List
 
-import torch
 from torch import nn, Tensor
 
 from auto.util import next_gen, random_gen
-from esn import activation
-from esn.esn import DeepESN, FlexDeepESN
-from esn.nn_readout import AutoNNReadout
-from esn.util import RMSELoss, NRMSELoss
+from esn.reservoir import activation
+from esn.esn import DeepESN
+from esn.reservoir.util import NRMSELoss
 from utils.types import IntGen, FloatGen
 
 default_size_gen = lambda: random.choice([20, 30, ])
@@ -53,7 +51,7 @@ class GreedyESN(nn.Module):
             esn = DeepESN(
                 num_layers=layers,
                 hidden_size=size,
-                activation = activation.self_normalizing_default(spectral_radius=100.0,leaky_rate=leaky),
+                activation = activation.self_normalizing_default(spectral_radius=100.0, leaky_rate=leaky),
                 # readout = AutoNNReadout(input_dim=layers*size, lr=1e-4, epochs=1700)
             )
             esn.fit(X, y)

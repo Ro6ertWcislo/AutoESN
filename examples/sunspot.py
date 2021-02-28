@@ -2,17 +2,17 @@ import time
 
 import utils.dataset_loader as dl
 from esn.esn import DeepESN
-from esn.initialization import CompositeInitializer, WeightInitializer
-from esn.util import NRMSELoss
+from esn.reservoir.initialization import CompositeInitializer, WeightInitializer
+from esn.reservoir.util import NRMSELoss
 
 norm = True
-mg17clean = dl.loader_explicit('datasets/sunspot.csv', test_size=600)
+sunspot = dl.loader_explicit('datasets/sunspot.csv', test_size=600)
 nrmse = NRMSELoss()
 if norm:
-    X, X_test, y, y_test, centr, spread = dl.norm_loader__(mg17clean)
+    X, X_test, y, y_test, centr, spread = dl.norm_loader__(sunspot)
     y_test = spread * y_test + centr
 else:
-    X, X_test, y, y_test = mg17clean()
+    X, X_test, y, y_test = sunspot()
 
 i = CompositeInitializer()\
     .with_seed(12)\

@@ -1,20 +1,19 @@
 from matplotlib import pyplot as plt
 
 import utils.dataset_loader as dl
-from esn import activation
+from esn.reservoir import activation
 from esn.esn import FlexDeepESN
-from esn.nn_readout import AutoNNReadout
-from esn.util import NRMSELoss
+from esn.readout.nn_readout import AutoNNReadout
+from esn.reservoir.util import NRMSELoss
 
 norm = True
-mg17clean = dl.loader_explicit('datasets/sunspotSmooth.csv', test_size=600)
+sunspotSmooth = dl.loader_explicit('datasets/sunspotSmooth.csv', test_size=600)
 nrmse = NRMSELoss()
-
 if norm:
-    X, X_test, y, y_test, centr, spread = dl.norm_loader__(mg17clean)
+    X, X_test, y, y_test, centr, spread = dl.norm_loader__(sunspotSmooth)
     y_test = spread * y_test + centr
 else:
-    X, X_test, y, y_test = mg17clean()
+    X, X_test, y, y_test = sunspotSmooth()
 
 esn = FlexDeepESN(
     hidden_size=600,
