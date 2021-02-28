@@ -11,9 +11,6 @@ class ReadoutMode(Enum):
     BinaryClassification = 2
     MultiValueClassification = 3
 
-# todo add batch size, early stop and regularization!!
-# todo make both readouts return the same
-# todo support batches
 class AutoNNReadout(nn.Module):
     def __init__(self, input_dim: int, output_dim: int = 1, mode: ReadoutMode = ReadoutMode.Regression,
                  layers: Union[List[nn.Module], str] = 'auto', lr: float = 1e-4, epochs: int = 500, early_stop=None,

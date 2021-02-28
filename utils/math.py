@@ -11,11 +11,6 @@ def spectral_normalize(tensor: Tensor) -> Tensor:
     return tensor / norm
 
 
-def eigen_norm(tensor: Tensor) -> Tensor:
-    abs_eigs = (torch.eig(tensor)[0] ** 2).sum(1).sqrt()
-    return tensor / torch.max(abs_eigs)
-
-
 def linear(input: Tensor, hx: Tensor, weight_ih: Tensor, weight_hh: Tensor, bias_ih: Optional[Tensor],
            bias_hh: Optional[Tensor]) -> Tensor:
     return F.linear(input, weight_ih, bias_ih) + F.linear(hx, weight_hh, bias_hh)

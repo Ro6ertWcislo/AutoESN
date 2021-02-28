@@ -4,7 +4,7 @@ import utils.dataset_loader as dl
 from esn.esn import DeepESN
 from esn.reservoir.initialization import CompositeInitializer, WeightInitializer
 from esn.reservoir.util import NRMSELoss
-
+from matplotlib import pyplot as plt
 norm = True
 sunspot = dl.loader_explicit('datasets/sunspot.csv', test_size=600)
 nrmse = NRMSELoss()
@@ -36,7 +36,7 @@ else:
 print(time.time()-start)
 n = nrmse(output.unsqueeze(-1), y_test).item()
 print(n)
-# last = 50
-# plt.plot(range(last), output.view(-1).detach().numpy()[-last:], 'r')
-# plt.plot(range(last), y_test.view(-1).detach().numpy()[-last:], 'b')
-# plt.show()
+last = 50
+plt.plot(range(last), output.view(-1).detach().numpy()[-last:], 'r')
+plt.plot(range(last), y_test.view(-1).detach().numpy()[-last:], 'b')
+plt.show()
