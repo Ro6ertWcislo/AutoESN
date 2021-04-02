@@ -58,7 +58,7 @@ For LSTM 4 architectures were tested
 ![m4](https://user-images.githubusercontent.com/32894690/113422210-99549200-93cc-11eb-9a68-d2fdad84116d.png)
 
 Each architecture was trained for 100 epochs with Adam optimiser.
-Each model was trained 5 times for each learning rate of [0.001, 0.002, 0.0005,0.005] and the resuls were then averaged and presented in the paper
+Each model was trained 5 times for each learning rate of [0.001, 0.002, 0.0005,0.005] and the resuls were then averaged and presented in the paper.
 
 
 
