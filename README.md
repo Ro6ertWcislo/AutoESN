@@ -48,10 +48,17 @@ Sunspot Series one step ahead prediction:
 Additionally, several experiments with moving average and LSTM networks were performed.
 
 For LSTM 4 architectures were tested
+
 ![m1](https://user-images.githubusercontent.com/32894690/113422089-71fdc500-93cc-11eb-8d12-3ed92ae2e03a.png)
+
 ![m2](https://user-images.githubusercontent.com/32894690/113422180-8d68d000-93cc-11eb-8e64-1f9eb0c481ca.png)
+
 ![m3](https://user-images.githubusercontent.com/32894690/113422194-93f74780-93cc-11eb-8276-869f084d0d43.png)
+
 ![m4](https://user-images.githubusercontent.com/32894690/113422210-99549200-93cc-11eb-9a68-d2fdad84116d.png)
+
+Each architecture was trained for 100 epochs with Adam optimiser.
+Each model was trained 5 times for each learning rate of [0.001, 0.002, 0.0005,0.005] and the resuls were then averaged and presented in the paper
 
 
 
