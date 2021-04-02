@@ -41,3 +41,18 @@ Sunspot Series one step ahead prediction:
 |*dESN SNA*           | 3      | 1      | 1400              | 1.0            |
 | *gESN SNA*                 | 1      | 8      | 400               | 2.0            |
 | *gdESN SNA*   | 3      | 2      | 1450              | 1.0            |
+
+
+
+
+Additionally, several experiments with moving average and LSTM networks were performed.
+
+For LSTM 4 architectures were tested
+![m1](https://user-images.githubusercontent.com/32894690/113422089-71fdc500-93cc-11eb-8d12-3ed92ae2e03a.png)
+![m2](https://user-images.githubusercontent.com/32894690/113422180-8d68d000-93cc-11eb-8e64-1f9eb0c481ca.png)
+![m3](https://user-images.githubusercontent.com/32894690/113422194-93f74780-93cc-11eb-8276-869f084d0d43.png)
+![m4](https://user-images.githubusercontent.com/32894690/113422210-99549200-93cc-11eb-9a68-d2fdad84116d.png)
+
+
+
+
