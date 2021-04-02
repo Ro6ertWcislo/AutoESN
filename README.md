@@ -76,7 +76,6 @@ Best results were obtained with:
 * Architecture 2 and learning rate 0.002 for MackeGlass
 * Architecture 3 and learning rate 0.002 for Sunspot
 * Architecture 4 and learning rate 0.005 for Multiple Superimposed oscillators
-* 
 
 
 
