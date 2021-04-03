@@ -1,6 +1,9 @@
 This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks withSelf-Normalizing Activations". Below, we present additional information and experiments that were performed but did not fit into the paper.
 
 - [Architecture overview](#architecture-overview)
+  * [Deep ESN](#deep-esn)
+  * [Grouped ESN](#grouped-esn)
+  * [Grouped Deep ESN](#grouped-deep-esn)
 - [Grid Search Configuration](#grid-search-configuration)
 - [Best Architecture Configuration](#best-architecture-configuration)
   * [ESN](#esn)
@@ -12,8 +15,22 @@ This is the repository connected to the paper "Grouped Multi-Layer Echo State Ne
 
 ## Architecture overview
 Four different types of Echo State Networks were tested: shallow ESN, deep ESN, grouped ESN and the generalisation of all of them which is grouped deep Echo State Network.
-Briefly, Deep Echo State Network stacks several reservoirs one on top of another. The difference to classical deep neural network is that the output of all intermediate layers is concatenated giving the final result. Grouped ESN consist of a group of shallow ESNs whose outputs are concatenated to create final output.
+
+### Deep ESN
+Briefly, Deep Echo State Network stacks several reservoirs one on top of another. The difference to classical deep neural network is that the output of all intermediate layers is concatenated giving the final result.
+
+<img src="https://user-images.githubusercontent.com/32894690/113476313-0c1c4680-947b-11eb-9d57-83485a946f65.png" width="400">
+
+### Grouped ESN
+Grouped ESN consist of a group of shallow ESNs whose outputs are concatenated to create final output.
+
+<img src="https://user-images.githubusercontent.com/32894690/113476317-163e4500-947b-11eb-9eb4-9827d691c0e7.png" width="200">
+
+### Grouped Deep ESN
 Grouped Deep ESN puts both these approaches together by creating a group of Deep ESNs The output of gdESN is concatenated output of all its reservoirs.
+
+<img src="https://user-images.githubusercontent.com/32894690/113476592-b5b00780-947c-11eb-93b0-d312c8accb41.png" width="400">
+
 
 ## Grid Search Configuration
 ## Best Architecture configuration
@@ -44,7 +61,8 @@ Multiple Superimposed Oscillators one step ahead prediction:
 | *gESN tanh*                  | 1      | 2      | None              | 0.5            |
 | *gdESN tanh*            | 3      | 3      | None              | 0.5            |
 |----------------------|--------|--------|-------------------|----------------|
-| *ESN SNA*                           | 1      | 1      | 1400              | 0.5            |
+| *ESN SNA*                           | 1      | 1      | 1400              | 0.5            |![GroupedDeep-1](https://user-images.githubusercontent.com/32894690/113476588-b052bd00-947c-11eb-8511-79e507705702.png)
+
 | *dESN SNA*                  | 4      | 1      | 1200              | 1.0            |
 | *gESN SNA*             | 1      | 3      | 1300              | 1.0            |
 | 	*gdESN SNA*  | 3      | 2      | 1400              | 1.0            |
