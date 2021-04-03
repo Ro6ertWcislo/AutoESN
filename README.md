@@ -1,4 +1,4 @@
-This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks withSelf-Normalizing Activations". Below, we present additional information and experiments that were performed but did not fit into the paper.
+This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks with Self-Normalizing Activations". Below, we present additional information and experiments that were performed.
 
 - [Architecture overview](#architecture-overview)
   * [Deep ESN](#deep-esn)
@@ -13,7 +13,7 @@ This is the repository connected to the paper "Grouped Multi-Layer Echo State Ne
 
 
 ## Architecture overview
-Four different types of Echo State Networks were tested: shallow ESN, deep ESN, grouped ESN and the generalisation of all of them which is grouped deep Echo State Network.
+Four different types of Echo State Networks were tested: shallow ESN, deep ESN(*dESN*), grouped ESN(*gESN*) and the generalisation of all of them which is grouped deep Echo State Network (*gdESN*).
 
 ### Deep ESN
 Briefly, Deep Echo State Network stacks several reservoirs one on top of another. The difference to classical deep neural network is that the output of all intermediate layers is concatenated giving the final result.
@@ -26,19 +26,19 @@ Grouped ESN consist of a group of shallow ESNs whose outputs are concatenated to
 <img src="https://user-images.githubusercontent.com/32894690/113476317-163e4500-947b-11eb-9eb4-9827d691c0e7.png" width="200">
 
 ### Grouped Deep ESN
-Grouped Deep ESN puts both these approaches together by creating a group of Deep ESNs The output of gdESN is concatenated output of all its reservoirs.
+Grouped Deep ESN puts both these approaches together by creating a group of Deep ESNs. The output of *gdESN* is concatenated output of all its reservoirs.
 
 <img src="https://user-images.githubusercontent.com/32894690/113476592-b5b00780-947c-11eb-93b0-d312c8accb41.png" width="400">
 
 
 ## Grid Search Configuration
-Tanh activation function highly  depends  on  input  scaling,  while  for  SNA(self-normalizing activation) its  effect  is  reduced  due  to  normalization  factor.This is why we used two different hyperparameter setups as an input to grid search. For each configuration, 5 concrete models were generated with different random seeds applied for weight initialization. For *gESN* and *dESN* architectures N<sub>g</sub>,N<sub>l</sub>∈ {2,3,4,5,10}, where N<sub>g</sub> is number of groups and N<sub>l</sub> number of layers. For *gdESN* architectures each of{(2,2),(2,3),(2,4),(2,5),(3,2),(3,3),(3,4),(4,2),(4,3),(5,2)}configurations of (groups, layers) was used.Each  tested  model,  shallow  or  decoupled  had  the  total  number  of  1000  neurons  (with  the  small deviations  resulting  from  subreservoir  integer  sizes).  Grid  search  optimization  was  performed  on all these hyperparameters and architectures. The best configuration was selected based on minimal NRMSE score obtained on validation set. In the main part of experiment, which includes 1-step ahead  prediction  of  time-series,  the  average and minimal NRMSE  on  the  test  set  was calculated for each architecture and the target hyperparameter set.
+Tanh activation function highly  depends  on  input  scaling,  while  for  SNA(self-normalizing activation) its  effect  is  reduced  due  to  normalization  factor. This is why we used two different hyperparameter setups as an input to grid search. For each configuration, 5 concrete models were generated with different random seeds applied for weight initialization. For *gESN* and *dESN* architectures N<sub>g</sub>,N<sub>l</sub>∈ {2,3,4,5,10}, where N<sub>g</sub> is number of groups and N<sub>l</sub> number of layers. For *gdESN* architectures each of{(2,2),(2,3),(2,4),(2,5),(3,2),(3,3),(3,4),(4,2),(4,3),(5,2)}configurations of (groups, layers) was used.Each  tested  model,  shallow  or  decoupled  had  the  total  number  of  1000  neurons  (with  the  small deviations  resulting  from  subreservoir  integer  sizes).  Grid  search  optimization  was  performed  on all these hyperparameters and architectures. The best configuration was selected based on minimal NRMSE score obtained on validation set. In the main part of experiment, which includes 1-step ahead  prediction  of  time-series,  the  average and minimal NRMSE  on  the  test  set  was calculated for each architecture and the target hyperparameter set.
 
 <table>
     <tr>
-        <td>Hyperparameter</td>
-        <td>tanh</td>
-        <td>self-normalizing</td>
+        <td><b>Hyperparameter</b></td>
+        <td><b>tanh</b></td>
+        <td><b>SNA</b></td>
     </tr>
     <tr>
         <td>Input Scaling s</td>
@@ -189,7 +189,7 @@ Grouped reservoirs have better memory capacity than Deep ones for the same confi
 
 ### Input scaling vs Activation Radius
 
-For SNA architectures only the one hyperparameter from the set:{Input scaling *s*, Acativation radius *r*, Spectral radius *ρ*}can be adjusted. The others can be fixed with no negative influence on the model memory.This  conclusion  comes  from  normalization  effect  of  activation  radius *r* and  is  confirmed  by  the empirical results presented below and obtained for SNA ESN, with div<sub>sr</sub>∈ {10,20,30,40}, where div<sub>sr</sub>=*s*/*r*. For each div<sub>sr</sub>, 20 different values of *s* and *r* were selected. For each of these configurations,the models with the same initial weights were trained in 10 trials. As presented in Figure below the models with the same div<sub>sr</sub> exhibit practically the same memory capacity.
+For SNA architectures only the one hyperparameter from the set: {Input scaling *s*, Acativation radius *r*, Spectral radius *ρ*} can be adjusted. The others can be fixed with no negative influence on the model memory. This  conclusion  comes  from  normalization  effect  of  activation  radius *r* and  is  confirmed  by  the empirical results presented below and obtained for SNA ESN, with div<sub>sr</sub>∈ {10,20,30,40}, where div<sub>sr</sub>=*s*/*r*. For each div<sub>sr</sub>, 20 different values of *s* and *r* were selected. For each of these configurations, the models with the same initial weights were trained in 10 trials. As presented in Figure below the models with the same div<sub>sr</sub> exhibit practically the same memory capacity.
 
 The figure below presents Memory  Capacity  NRMSE  scores for recalling input seen 30 steps before for ESN  with  fixed  ratio  of div<sub>sr</sub>,  where div<sub>sr</sub>∈ {10,20,30,40}.  For  each div<sub>sr</sub>,  20  different  values  of *s* and *r* were  chosen.  All experiments were conducted on SNA ESN with fixed weights (s and r were changing at the begging of the training but not the weights!). 10 diferent SNA ESNs were initialized with different weights and the results were averaged for each configuration.
 
