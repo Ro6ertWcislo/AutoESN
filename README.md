@@ -1,3 +1,24 @@
+This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks withSelf-Normalizing Activations". Below, we present additional information and experiments that were performed but did not fit into the paper.
+
+- [Architecture overview](#architecture-overview)
+- [Grid Search Configuration](#grid-search-configuration)
+- [Best Architecture Configuration](#best-architecture-configuration)
+  * [ESN](#esn)
+  * [LSTM](#lstm)
+- [Memory Capacity](#memory-capacity)
+  * [Results by architecture type](#results-by-architecture-type)
+  * [Input scaling vs Activation Radius](#input-scaling-vs-activation-radius)
+
+
+## Architecture overview
+Four different types of Echo State Networks were tested: shallow ESN, deep ESN, grouped ESN and the generalisation of all of them which is grouped deep Echo State Network.
+Briefly, Deep Echo State Network stacks several reservoirs one on top of another. The difference to classical deep neural network is that the output of all intermediate layers is concatenated giving the final result. Grouped ESN consist of a group of shallow ESNs whose outputs are concatenated to create final output.
+Grouped Deep ESN puts both these approaches together by creating a group of Deep ESNs The output of gdESN is concatenated output of all its reservoirs.
+
+## Grid Search Configuration
+## Best Architecture configuration
+### ESN
+
 Hyperparameter sets for best results in different tasks are listed below:
 
 MackeyGlass Series one step ahead prediction:
@@ -43,7 +64,7 @@ Sunspot Series one step ahead prediction:
 | *gdESN SNA*   | 3      | 2      | 1450              | 1.0            |
 
 
-
+### LSTM
 
 Additionally, several experiments with moving average and LSTM networks were performed.
 
@@ -76,6 +97,17 @@ Best results were obtained with:
 * Architecture 2 and learning rate 0.002 for MackeGlass
 * Architecture 3 and learning rate 0.002 for Sunspot
 * Architecture 4 and learning rate 0.005 for Multiple Superimposed oscillators
+
+## Memory Capacity
+### Results by architecture type
+### Input scaling vs Activation Radius
+
+
+
+
+
+
+
 
 
 
