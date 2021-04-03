@@ -33,6 +33,57 @@ Grouped Deep ESN puts both these approaches together by creating a group of Deep
 
 
 ## Grid Search Configuration
+Tanh activation function highly  depends  on  input  scaling,  while  for  SNA(self-normalizing activation) its  effect  is  reduced  due  to  normalization  factor.This is why we used two different hyperparameter setups as an input to grid search. For each configuration, 5 concrete models were generated with different random seeds applied for weight initialization. For *gESN* and *dESN* architectures N<sub>g</sub>,N<sub>l</sub>∈ {2,3,4,5,10}, where N<sub>g</sub> is number of groups and N<sub>l</sub> number of layers. For *gdESN* architectures each of{(2,2),(2,3),(2,4),(2,5),(3,2),(3,3),(3,4),(4,2),(4,3),(5,2)}configurations of (groups, layers) was used.Each  tested  model,  shallow  or  decoupled  had  the  total  number  of  1000  neurons  (with  the  small deviations  resulting  from  subreservoir  integer  sizes).  Grid  search  optimization  was  performed  on all these hyperparameters and architectures. The best configuration was selected based on minimal NRMSE score obtained on validation set. In the main part of experiment, which includes 1-step ahead  prediction  of  time-series,  the  average and minimal NRMSE  on  the  test  set  was calculated for each architecture and the target hyperparameter set.
+
+<table>
+    <tr>
+        <td>Hyperparameter</td>
+        <td>tanh</td>
+        <td>self-normalizing</td>
+    </tr>
+    <tr>
+        <td>Input Scaling s</td>
+        <td>{0.1,0.5,1.0,10}</td>
+        <td>1.0</td>
+    </tr>
+    <tr>
+        <td>Spectral Radius ρ</td>
+        <td>{0.7,0.8,0.9,1.0}</td>
+        <td>1.0</td>
+    </tr>
+    <tr>
+        <td>Leaking Rate α</td>
+        <td>{0.7,0.8,0.9,1.0}</td>
+        <td>1.0</td>
+    </tr>
+    <tr>
+        <td>Regularization β</td>
+        <td>{0.5,1,2}</td>
+        <td>{0.5,1,2}</td>
+    </tr>
+    <tr>
+        <td>Actiation Radius r</td>
+        <td>-</td>
+        <td>{50k | k&#8712;1,2,3...30}</td>
+    </tr>
+    <tr>
+        <td>Washout</td>
+        <td colspan="2" style="text-align: center; vertical-align: middle;">100</td>
+    </tr>
+    <tr>
+        <td>Total neurons</td>
+       <td colspan="2">1000</td>
+    </tr>
+    <tr>
+        <td>Sparsity</td>
+        <td colspan="2">10%</td>
+    </tr>
+    <tr>
+        <td>Weight distribution</td>
+        <td colspan="2">uniform, centered around 0</td>
+    </tr>
+</table>
+
 ## Best Architecture configuration
 ### ESN
 
@@ -61,8 +112,7 @@ Multiple Superimposed Oscillators one step ahead prediction:
 | *gESN tanh*                  | 1      | 2      | None              | 0.5            |
 | *gdESN tanh*            | 3      | 3      | None              | 0.5            |
 |----------------------|--------|--------|-------------------|----------------|
-| *ESN SNA*                           | 1      | 1      | 1400              | 0.5            |![GroupedDeep-1](https://user-images.githubusercontent.com/32894690/113476588-b052bd00-947c-11eb-8511-79e507705702.png)
-
+| *ESN SNA*                           | 1      | 1      | 1400              | 0.5            |
 | *dESN SNA*                  | 4      | 1      | 1200              | 1.0            |
 | *gESN SNA*             | 1      | 3      | 1300              | 1.0            |
 | 	*gdESN SNA*  | 3      | 2      | 1400              | 1.0            |
