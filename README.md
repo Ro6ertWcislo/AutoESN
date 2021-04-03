@@ -9,7 +9,6 @@ This is the repository connected to the paper "Grouped Multi-Layer Echo State Ne
   * [ESN](#esn)
   * [LSTM](#lstm)
 - [Memory Capacity](#memory-capacity)
-  * [Results by architecture type](#results-by-architecture-type)
   * [Input scaling vs Activation Radius](#input-scaling-vs-activation-radius)
 
 
@@ -167,8 +166,37 @@ Best results were obtained with:
 * Architecture 4 and learning rate 0.005 for Multiple Superimposed oscillators
 
 ## Memory Capacity
-### Results by architecture type
+The objective of this experiment was to measure how ESN models can recall past input seen by reservoir *N* steps ago, where N∈{1,5,10,15,...100}. In particular, we compare different  decoupled  SNA  architectures based  on  the  hyperparameter  configuration established in the one step ahead preadiction for MG dataset. For each *N* , N steps behind NRMSE was averaged over 10 trials. Several phenomena observed in the results of the experiment are depicted in Figures below.
+
+In case of *dESN* SNA architecture, memory capacity decreases faster for bigger number of layers. It is important to note that the total number of neurons remains the same(1000).
+
+<img src="https://user-images.githubusercontent.com/32894690/113477510-7ab0d280-9482-11eb-9101-aed40795e49b.png" width="400">
+
+Similar observation can be done for *gESN* SNA architecture, however here, the influence of adding more groups on the memory is lower.
+
+<img src="https://user-images.githubusercontent.com/32894690/113477554-ea26c200-9482-11eb-9e97-1f624281bf54.png" width="400">
+
+
+These conclusions find further confirmation for *gdESN*, where the smaller the product of layers and groups, the better the memory capacity. In case of *gdESN* SNA, we observe that two-dimensional configuration of layers and groups (e.g. (2,4) vs. (4,2)) affects memory characteristics and can be used to find trade-off between memory and representational power.
+
+<img src="https://user-images.githubusercontent.com/32894690/113477564-01fe4600-9483-11eb-8714-ce6e2e98a5b2.png" width="400">
+
+
+In general, two clean patterns emerge - one bigger reservoir has better Memory Capacity than two either stacked or grouped as long as total number of neurons stays the same.
+Grouped reservoirs have better memory capacity than Deep ones for the same configuration, eg. 2 layers 500 neurons each vs two groups 500 neurons each.
+
+<img src="https://user-images.githubusercontent.com/32894690/113477573-16dad980-9483-11eb-9c7c-74b8509c2ab9.png" width="400">
+
 ### Input scaling vs Activation Radius
+
+For SNA architectures only the one hyperparameter from the set:{Input scaling *s*, Acativation radius *r*, Spectral radius *ρ*}can be adjusted. The others can be fixed with no negative influence on the model memory.This  conclusion  comes  from  normalization  effect  of  activation  radius *r* and  is  confirmed  by  the empirical results presented below and obtained for SNA ESN, with div<sub>sr</sub>∈ {10,20,30,40}, where div<sub>sr</sub>=*s*/*r*. For each div<sub>sr</sub>, 20 different values of *s* and *r* were selected. For each of these configurations,the models with the same initial weights were trained in 10 trials. As presented in Figure below the models with the same div<sub>sr</sub> exhibit practically the same memory capacity.
+
+The figure below presents Memory  Capacity  NRMSE  scores for recalling input seen 30 steps before for ESN  with  fixed  ratio  of div<sub>sr</sub>,  where div<sub>sr</sub>∈ {10,20,30,40}.  For  each div<sub>sr</sub>,  20  different  values  of *s* and *r* were  chosen.  All experiments were conducted on SNA ESN with fixed weights (s and r were changing at the begging of the training but not the weights!). 10 diferent SNA ESNs were initialized with different weights and the results were averaged for each configuration.
+
+<img src="https://user-images.githubusercontent.com/32894690/113477802-ce242000-9484-11eb-8c35-b3ee36a4b394.png" width="700">
+
+
+
 
 
 
