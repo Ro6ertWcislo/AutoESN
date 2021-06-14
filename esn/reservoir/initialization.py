@@ -1,10 +1,11 @@
 import math
+from random import sample
 from typing import List, Union
 
 import networkx as nx
+import numpy as np
 import torch.nn
 from torch import Tensor
-import numpy as np
 
 from esn.reservoir.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
 from utils.math import spectral_normalize
@@ -138,6 +139,26 @@ def random_add(weight: Tensor, additional_density: float = 0.05, symmetric: bool
     return weight
 
 
+def separate(weight: Tensor, input_nodes: int = 200, output_nodes=200):
+    size = weight.size(0)
+    all_indices = sample(range(size), input_nodes + output_nodes)
+    input_indices = set(all_indices[:input_nodes])
+    output_indices = set(all_indices[input_nodes:])
+    non_output_indices = set(range(size)) - output_indices
+
+    for index in input_indices:
+        connections = weight[index].nonzero()  # nonzero() returns one-element tuple
+        connections = set(connections.reshape(-1).numpy())
+        conflicts = output_indices.intersection(connections)
+        new_indices = sample(tuple(non_output_indices), len(conflicts))
+        for conflict, new_index in zip(conflicts, new_indices):
+            weight[index, new_index] = weight[index, conflict]
+            weight[index, conflict] = 0.0
+
+    return weight
+
+
+
 def loopify(weight: Tensor, percentage_of_loops: float = 1.0):
     """
     sets $percentage_of_loops values on diagonal to non-zero values
@@ -191,9 +212,11 @@ def subreservoir(weight: Tensor, k=3):
                                                                                                           subres_size)
     return weight * mask
 
-def init_seed(weight: Tensor, seed:int=42):
+
+def init_seed(weight: Tensor, seed: int = 42):
     set_all_seeds(seed)
     return weight
+
 
 def _xavier_uniform() -> Initializer:
     def __uniform(weight: Tensor) -> Tensor:
@@ -264,6 +287,10 @@ class CompositeInitializer(object):
         self.initializers.append(wrap(loopify, percentage_of_loops))
         return self
 
+    def separate(self, input_nodes: int = 200, output_nodes: int = 200):
+        self.initializers.append(wrap(separate, input_nodes, output_nodes, self))
+        return self
+
     def configuration_model(self, configuration: List[int]):
         self.initializers.append(wrap(configuration_model, configuration))
         return self
@@ -283,7 +310,7 @@ class CompositeInitializer(object):
     def with_seed(self, seed):
         set_all_seeds(seed)
         return self
-    
+
     def init_seed(self, seed):
         self.initializers.append(wrap(init_seed, seed))
         return self
