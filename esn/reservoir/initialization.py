@@ -288,7 +288,7 @@ class CompositeInitializer(object):
         return self
 
     def separate(self, input_nodes: int = 200, output_nodes: int = 200):
-        self.initializers.append(wrap(separate, input_nodes, output_nodes, self))
+        self.initializers.append(wrap(separate, input_nodes, output_nodes))
         return self
 
     def configuration_model(self, configuration: List[int]):
