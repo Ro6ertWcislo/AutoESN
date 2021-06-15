@@ -15,11 +15,14 @@ if norm:
 else:
     X, X_test, y, y_test = sunspotSmooth()
 
+# this can be used to plug a neural network as readout
 esn = FlexDeepESN(
     hidden_size=600,
+    num_layers=2,
     activation=activation.self_normalizing_default(spectral_radius=100.0),
     readout=AutoNNReadout(input_dim=1200, lr=1e-4, epochs=1000)
 )
+
 esn.fit(X, y)
 
 if norm:
