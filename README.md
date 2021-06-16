@@ -14,6 +14,7 @@ This is the repository connected to the paper "Grouped Multi-Layer Echo State Ne
 
 ## Usage
 Make sure you have torch installed from https://pytorch.org/get-started/locally/
+
 Run
 ```sh
 pip install auto-esn
