@@ -7,12 +7,15 @@ import numpy as np
 import torch.nn
 from torch import Tensor
 
-from esn.reservoir.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
-from utils.math import spectral_normalize
-from utils.types import Initializer
+from auto_esn.esn.reservoir.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
+
 
 
 # todo clean?
+from auto_esn.utils.math import spectral_normalize
+from auto_esn.utils.types import Initializer
+
+
 def _scale(factor: float = 1.0) -> Initializer:
     def __scale(weight: Tensor) -> Tensor:
         return weight * factor

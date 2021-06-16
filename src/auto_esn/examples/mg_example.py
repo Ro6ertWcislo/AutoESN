@@ -1,13 +1,14 @@
 from matplotlib import pyplot as plt
 
-import utils.dataset_loader as dl
-from esn.esn import GroupedDeepESN
-from esn.reservoir.activation import self_normalizing_default
-from esn.reservoir.initialization import CompositeInitializer, WeightInitializer
-from esn.reservoir.util import NRMSELoss
+import auto_esn.utils.dataset_loader as dl
+from auto_esn.datasets.df import MackeyGlass
+from auto_esn.esn.esn import GroupedDeepESN
+from auto_esn.esn.reservoir.activation import self_normalizing_default
+from auto_esn.esn.reservoir.initialization import CompositeInitializer, WeightInitializer
+from auto_esn.esn.reservoir.util import NRMSELoss
 
 
-mg17clean = dl.loader_explicit('datasets/mg10.csv', test_size=400)
+mg17clean = dl.loader_explicit(MackeyGlass, test_size=400)
 nrmse = NRMSELoss()
 
 X, X_test, y, y_test = mg17clean()
@@ -17,9 +18,9 @@ def regular_graph_initializer(seed, degree):
     # initialize input weights with uniform distribution from -1 to 1 and specified seed to reproduce results
     input_weight =CompositeInitializer().with_seed(seed).uniform()
 
-    # specified operations will be done one by one, can be seen as a list of transforms
+    # specified operations will be done one by one, so this "builder" can be seen as a list of transforms
     # first set the seed and start with uniform distribution
-    # then treat the newly created dense matrix as adjacency matrix and transform is into regular graph with
+    # then treat the newly created dense matrix as adjacency matrix and transform it into regular graph with
     # desired degree, then apply spectral normalization, so that spectral radius is 1.
     # at the end scale the matrix by factor 0.9 and the initialization is done
     reservoir_weight = CompositeInitializer()\

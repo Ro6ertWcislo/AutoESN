@@ -1,10 +1,10 @@
 import torch
 from torch import nn, Tensor
 
-from esn.reservoir import activation as A
-from esn.reservoir.activation import Activation
-from esn.reservoir.initialization import WeightInitializer
-from utils import math as M
+from auto_esn.esn.reservoir import activation as A
+from auto_esn.esn.reservoir.activation import Activation
+from auto_esn.esn.reservoir.initialization import WeightInitializer
+from auto_esn.utils import math as M
 
 
 class ESNCellBase(nn.Module):

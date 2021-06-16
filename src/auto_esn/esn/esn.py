@@ -1,10 +1,10 @@
 from torch import nn, Tensor
 
-from esn.readout.svr_readout import SVDReadout
-from esn.reservoir import activation as A
-from esn.reservoir.activation import Activation
-from esn.reservoir.cell import DeepESNCell, GroupOfESNCell
-from esn.reservoir.initialization import WeightInitializer
+from auto_esn.esn.readout.svr_readout import SVDReadout
+from auto_esn.esn.reservoir import activation as A
+from auto_esn.esn.reservoir.activation import Activation
+from auto_esn.esn.reservoir.cell import DeepESNCell, GroupOfESNCell
+from auto_esn.esn.reservoir.initialization import WeightInitializer
 
 
 class ESNBase(nn.Module):

@@ -1,8 +1,9 @@
 from matplotlib import pyplot as plt
 
-import utils.dataset_loader as dl
-from esn.esn import GroupedDeepESN
-from esn.reservoir.util import NRMSELoss
+import auto_esn.utils.dataset_loader as dl
+from auto_esn.datasets.df import MackeyGlass
+from auto_esn.esn.esn import GroupedDeepESN
+from auto_esn.esn.reservoir.util import NRMSELoss
 """
 The easiest way to use the lib for typical 1-dim time series prediction
 """
@@ -10,7 +11,8 @@ The easiest way to use the lib for typical 1-dim time series prediction
 # if you have a time series in .csv format, just make sure the values are under y column and use builtin loader
 # In this example you'll end up with 600 train and 400 test samples.
 # Leave max_samples empty and you'll get the whole series
-mg17clean = dl.loader_explicit('datasets/mg10.csv', test_size=400, max_samples=1000)
+# you can pass either path or pd.Dataframe with 'y' column
+mg17clean = dl.loader_explicit(MackeyGlass, test_size=400, max_samples=1000)
 
 # initialize loss function for evaluation
 nrmse = NRMSELoss()

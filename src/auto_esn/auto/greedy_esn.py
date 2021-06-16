@@ -5,11 +5,11 @@ from typing import Tuple, List
 
 from torch import nn, Tensor
 
-from auto.util import next_gen, random_gen
-from esn.reservoir import activation
-from esn.esn import DeepESN
-from esn.reservoir.util import NRMSELoss
-from utils.types import IntGen, FloatGen
+from auto_esn.auto.util import next_gen, random_gen
+from auto_esn.esn.reservoir import activation
+from auto_esn.esn.esn import DeepESN
+from auto_esn.esn.reservoir.util import NRMSELoss
+from auto_esn.utils.types import IntGen, FloatGen
 
 default_size_gen = lambda: random.choice([20, 30, ])
 

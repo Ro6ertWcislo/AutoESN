@@ -1,12 +1,13 @@
 import time
 
-import utils.dataset_loader as dl
-from esn.esn import DeepESN
-from esn.reservoir.initialization import CompositeInitializer, WeightInitializer
-from esn.reservoir.util import NRMSELoss
+import auto_esn.utils.dataset_loader as dl
+from auto_esn.datasets.df import Sunspot
+from auto_esn.esn.esn import DeepESN
+from auto_esn.esn.reservoir.initialization import CompositeInitializer, WeightInitializer
+from auto_esn.esn.reservoir.util import NRMSELoss
 from matplotlib import pyplot as plt
 norm = True
-sunspot = dl.loader_explicit('datasets/sunspot.csv', test_size=600)
+sunspot = dl.loader_explicit(Sunspot, test_size=600)
 nrmse = NRMSELoss()
 if norm:
     X, X_test, y, y_test, centr, spread = dl.norm_loader__(sunspot)
