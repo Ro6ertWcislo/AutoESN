@@ -19,8 +19,9 @@ Run
 ```sh
 pip install auto-esn
 ```
-Then navigate to [simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/easiest_example_mg.py) read descriptions, copy code to your project and run!
+Then navigate to [simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/easiest_example_mg.py), read descriptions, copy code to your project and run!
 For more complex examples explore [examples](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/) folder.
+More "formal" documentation is undergo. In the meantime, if you have any questions or requests don't hesitate to raise an [issue](https://github.com/Ro6ertWcislo/AutoESN/issues).
 
 
 
