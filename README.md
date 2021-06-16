@@ -20,7 +20,7 @@ Run
 pip install auto-esn
 ```
 Then navigate to [simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/easiest_example_mg.py) read descriptions, copy code to your project and run!
-For more complex examples explore [examples]([simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/)) folder.
+For more complex examples explore [examples](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/) folder.
 
 
 
