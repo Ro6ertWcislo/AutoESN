@@ -1,5 +1,6 @@
 This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks with Self-Normalizing Activations". Below, we present additional information and experiments that were performed.
 
+- [Usage](#usage)
 - [Architecture overview](#architecture-overview)
   * [Deep ESN](#deep-esn)
   * [Grouped ESN](#grouped-esn)
@@ -10,6 +11,16 @@ This is the repository connected to the paper "Grouped Multi-Layer Echo State Ne
   * [LSTM](#lstm)
 - [Memory Capacity](#memory-capacity)
   * [Input scaling vs Activation Radius](#input-scaling-vs-activation-radius)
+
+## Usage
+Make sure you have torch installed from https://pytorch.org/get-started/locally/
+Run
+```sh
+pip install auto-esn
+```
+Then navigate to [simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/easiest_example_mg.py) read descriptions, copy code to your project and run!
+For more complex examples explore [examples]([simple example](https://github.com/Ro6ertWcislo/AutoESN/blob/master/src/auto_esn/examples/)) folder.
+
 
 
 ## Architecture overview
