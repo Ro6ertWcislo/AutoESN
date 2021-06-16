@@ -1,4 +1,4 @@
-from typing import Callable, Tuple, List
+from typing import Callable, Tuple, List, Union
 
 import numpy as np
 import pandas as pd
@@ -11,9 +11,9 @@ torch.set_default_dtype(dtype)
 
 # todo ugly - to refactor
 
-def load_train_testMVnext(path: str, test_size: float, past: List[int]) -> Tuple[
+def load_train_testMVnext(pathOrDf: Union[str, pd.DataFrame], test_size: float, past: List[int]) -> Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
     shift = max(past)
 
@@ -29,24 +29,9 @@ def load_train_testMVnext(path: str, test_size: float, past: List[int]) -> Tuple
     return X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
 
 
-def load_train_testXY(path: str, test_size: float) -> Tuple[
+def load_train_test(pathOrDf: Union[str, pd.DataFrame], division: float, max_samples: int = -1) -> Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    dataX = pd.read_csv(path)['x'].values
-    dataY = pd.read_csv(path)['y'].values
-    dataX = np.array(dataX, dtype=np.float64)
-    dataY = np.array(dataY, dtype=np.float64)
-
-    X = dataX.reshape((-1, 1, 1))
-    X = torch.from_numpy(X).to(device)
-    y = dataY.reshape((-1, 1, 1))
-    y = torch.from_numpy(y).to(device)
-
-    return X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
-
-
-def load_train_test(path: str, division: float, max_samples: int = -1) -> Tuple[
-    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
     X = data[:-1].reshape((-1, 1, 1))[:max_samples]
     X = torch.from_numpy(X).to(device)
@@ -57,9 +42,9 @@ def load_train_test(path: str, division: float, max_samples: int = -1) -> Tuple[
     return X[:p], X[p:], y[:p], y[p:]
 
 
-def load_train_test2(path: str, p: int, max_samples: int = -1) -> Tuple[
+def load_train_test2(pathOrDf: Union[str, pd.DataFrame], p: int, max_samples: int = -1) -> Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
     X = data[:-1].reshape((-1, 1, 1))[:max_samples]
@@ -70,9 +55,10 @@ def load_train_test2(path: str, p: int, max_samples: int = -1) -> Tuple[
     return X[:-p], X[-p:], y[:-p], y[-p:]
 
 
-def load_train_test_val_test(path: str, val_size=0.1, test_size=0.1, max_samples: int = -1) -> Tuple[
+def load_train_test_val_test(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples: int = -1) -> \
+Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
     X = data[:-1].reshape((-1, 1, 1))[:max_samples]
@@ -86,12 +72,12 @@ def load_train_test_val_test(path: str, val_size=0.1, test_size=0.1, max_samples
         test_size = int(test_size * X.size(0))
 
     return X[:-(val_size + test_size)], X[-(val_size + test_size):-test_size], X[-test_size:], y[:-(
-                val_size + test_size)], y[-(val_size + test_size):-test_size], y[-test_size:]
+            val_size + test_size)], y[-(val_size + test_size):-test_size], y[-test_size:]
 
 
-def load_train_test_memory_capacity(path: str, test_size: int, past: int) \
+def load_train_test_memory_capacity(pathOrDf: Union[str, pd.DataFrame], test_size: int, past: int) \
         -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
     X = data[past:].reshape((-1, 1, 1))
@@ -102,51 +88,44 @@ def load_train_test_memory_capacity(path: str, test_size: int, past: int) \
     return X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
 
 
-def loader_memory_capacity(path: str, test_size: int, past: int) -> Callable:
+def loader_memory_capacity(pathOrDf: Union[str, pd.DataFrame], test_size: int, past: int) -> Callable:
     def loader_():
-        return load_train_test_memory_capacity(path, test_size, past)
+        return load_train_test_memory_capacity(pathOrDf, test_size, past)
 
     return loader_
 
 
-def loader(path: str, division: float, max_samples: int = -1) -> Callable:
+def loader(pathOrDf: Union[str, pd.DataFrame], division: float, max_samples: int = -1) -> Callable:
     def loader_():
-        return load_train_test(path, division, max_samples)
+        return load_train_test(pathOrDf, division, max_samples)
 
     return loader_
 
 
-def loader_MV_with_past(path: str, test_size: int, past: List[int]):
+def loader_MV_with_past(pathOrDf: Union[str, pd.DataFrame], test_size: int, past: List[int]):
     def loader_():
-        return load_train_testMVnext(path, test_size, past)
+        return load_train_testMVnext(pathOrDf, test_size, past)
 
     return loader_
 
 
-def loader_explicit(path: str, test_size: int, max_samples: int = -1) -> Callable:
+def loader_explicit(pathOrDf: Union[str, pd.DataFrame], test_size: int, max_samples: int = -1) -> Callable:
     def loader_():
-        return load_train_test2(path, test_size, max_samples)
+        return load_train_test2(pathOrDf, test_size, max_samples)
 
     return loader_
 
 
-def loader_val_test(path: str, val_size=0.1, test_size=0.1, max_samples: int = -1) -> Callable:
+def loader_val_test(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples: int = -1) -> Callable:
     def loader_():
-        return load_train_test_val_test(path, val_size, test_size, max_samples)
+        return load_train_test_val_test(pathOrDf, val_size, test_size, max_samples)
 
     return loader_
 
 
-def loaderXY(path: str, test_size: int) -> Callable:
-    def loader_():
-        return load_train_testXY(path, test_size)
-
-    return loader_
-
-
-def load_train_test_ahead(path: str, p: int, ahead: int = 1, max_samples: int = -1) -> Tuple[
+def load_train_test_ahead(pathOrDf: Union[str, pd.DataFrame], p: int, ahead: int = 1, max_samples: int = -1) -> Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-    data = pd.read_csv(path)['y'].values
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
     X = data[:-ahead].reshape((-1, 1, 1))[:max_samples]
@@ -157,9 +136,9 @@ def load_train_test_ahead(path: str, p: int, ahead: int = 1, max_samples: int = 
     return X[:-p], X[-p:], y[:-p], y[-p:]
 
 
-def loader_explicit_ahead(path: str, test_size: int, ahead: int = 1, max_samples: int = -1):
+def loader_explicit_ahead(pathOrDf: Union[str, pd.DataFrame], test_size: int, ahead: int = 1, max_samples: int = -1):
     def loader_():
-        return load_train_test_ahead(path, test_size, ahead, max_samples)
+        return load_train_test_ahead(pathOrDf, test_size, ahead, max_samples)
 
     return loader_
 
