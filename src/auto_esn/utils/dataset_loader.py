@@ -23,7 +23,7 @@ def load_train_testMVnext(pathOrDf: Union[str, pd.DataFrame], test_size: float, 
             for i in past]
         , axis=2
     )
-    y = data[shift + 1:].reshape((-1, 1, 1))
+    y = data[shift + 1:].reshape((-1,  1))
     y = torch.from_numpy(y).to(device)
 
     return X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
@@ -33,9 +33,9 @@ def load_train_test(pathOrDf: Union[str, pd.DataFrame], division: float, max_sam
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
     data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
-    X = data[:-1].reshape((-1, 1, 1))[:max_samples]
+    X = data[:-1].reshape((-1, 1))[:max_samples]
     X = torch.from_numpy(X).to(device)
-    y = data[1:].reshape((-1, 1, 1))[:max_samples]
+    y = data[1:].reshape((-1, 1))[:max_samples]
     y = torch.from_numpy(y).to(device)
     size = X.shape[0]
     p = int(size * division)
@@ -47,9 +47,9 @@ def load_train_test2(pathOrDf: Union[str, pd.DataFrame], p: int, max_samples: in
     data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
-    X = data[:-1].reshape((-1, 1, 1))[:max_samples]
+    X = data[:-1].reshape((-1, 1))[:max_samples]
     X = torch.from_numpy(X).to(device)
-    y = data[1:].reshape((-1, 1, 1))[:max_samples]
+    y = data[1:].reshape((-1, 1))[:max_samples]
     y = torch.from_numpy(y).to(device)
 
     return X[:-p], X[-p:], y[:-p], y[-p:]
@@ -61,9 +61,9 @@ Tuple[
     data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
-    X = data[:-1].reshape((-1, 1, 1))[:max_samples]
+    X = data[:-1].reshape((-1, 1))[:max_samples]
     X = torch.from_numpy(X).to(device)
-    y = data[1:].reshape((-1, 1, 1))[:max_samples]
+    y = data[1:].reshape((-1, 1))[:max_samples]
     y = torch.from_numpy(y).to(device)
 
     if type(val_size) == float:
@@ -80,9 +80,9 @@ def load_train_test_memory_capacity(pathOrDf: Union[str, pd.DataFrame], test_siz
     data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
-    X = data[past:].reshape((-1, 1, 1))
+    X = data[past:].reshape((-1, 1))
     X = torch.from_numpy(X).to(device)
-    y = data[:-past].reshape((-1, 1, 1))
+    y = data[:-past].reshape((-1, 1))
     y = torch.from_numpy(y).to(device)
 
     return X[:-test_size], X[-test_size:], y[:-test_size], y[-test_size:]
@@ -128,9 +128,9 @@ def load_train_test_ahead(pathOrDf: Union[str, pd.DataFrame], p: int, ahead: int
     data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf,str) else pathOrDf).values
     data = np.array(data, dtype=np.float64)
 
-    X = data[:-ahead].reshape((-1, 1, 1))[:max_samples]
+    X = data[:-ahead].reshape((-1, 1))[:max_samples]
     X = torch.from_numpy(X).to(device)
-    y = data[ahead:].reshape((-1, 1, 1))[:max_samples]
+    y = data[ahead:].reshape((-1, 1))[:max_samples]
     y = torch.from_numpy(y).to(device)
 
     return X[:-p], X[-p:], y[:-p], y[-p:]

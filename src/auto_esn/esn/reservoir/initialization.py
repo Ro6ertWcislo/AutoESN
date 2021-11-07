@@ -5,11 +5,10 @@ from typing import List, Union
 import networkx as nx
 import numpy as np
 import torch.nn
+from networkx import watts_strogatz_graph, adjacency_matrix
 from torch import Tensor
 
 from auto_esn.esn.reservoir.util import get_regular_graph_mask, get_star_graph_mask, set_all_seeds
-
-
 
 # todo clean?
 from auto_esn.utils.math import spectral_normalize
@@ -69,6 +68,16 @@ def _regular_graph(degree_or_density: Union[int, float] = 3) -> Initializer:
         return weight * graph_mask
 
     return __regular_graph
+
+
+def _watts_strogatz(neighbours: int = 10, rewire_proba: float = 0.05) -> Initializer:
+    def __watts_strogatz(weight: Tensor) -> Tensor:
+        nodes = weight.size(0)
+        G = watts_strogatz_graph(n=nodes, k=neighbours, p=rewire_proba)
+        graph_mask = torch.from_numpy(adjacency_matrix(G).toarray())
+        return weight * graph_mask
+
+    return __watts_strogatz
 
 
 def _star_graph(stars_or_density: Union[int, float] = 3) -> Initializer:
@@ -159,7 +168,6 @@ def separate(weight: Tensor, input_nodes: int = 200, output_nodes=200):
             weight[index, conflict] = 0.0
 
     return weight
-
 
 
 def loopify(weight: Tensor, percentage_of_loops: float = 1.0):
@@ -272,6 +280,10 @@ class CompositeInitializer(object):
 
     def regular_graph(self, degree_or_density: Union[float, int] = 3):
         self.initializers.append(_regular_graph(degree_or_density))
+        return self
+
+    def watts_strogatz(self, neighbours: int = 10, rewire_proba: float = 0.05):
+        self.initializers.append(_watts_strogatz(neighbours, rewire_proba))
         return self
 
     def star_graph(self, stars_or_density: Union[float, int] = 3):

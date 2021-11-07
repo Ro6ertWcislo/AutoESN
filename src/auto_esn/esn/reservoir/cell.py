@@ -42,10 +42,10 @@ class ESNCellBase(nn.Module):
                     input.size(1), self.input_size))
 
     def check_forward_hidden(self, input: Tensor, hx: Tensor, hidden_label: str = ''):
-        if input.size(0) != hx.size(0):
+        if input.size(0) != hx.size(0): # todo add batch size??
             raise RuntimeError(
-                "Input batch size {} doesn't match hidden{} batch size {}".format(
-                    input.size(0), hidden_label, hx.size(0)))
+                "Input batch size {} doesn't match hidden {}".format(
+                    input.size(0), hidden_label))
 
         if hx.size(1) != self.hidden_size:
             raise RuntimeError(
@@ -99,30 +99,26 @@ class ESNCell(ESNCellBase):
         self.activation = activation
         self.hx = None
 
-    def forward(self, input: Tensor, no_chunk=True) -> Tensor:
+    def forward(self, input: Tensor, washout=0) -> Tensor:
+        if washout > 0:
+            self._forward(input[:washout])
+        return self._forward(input[washout:])
+
+    def _forward(self, input: Tensor) -> Tensor:
         self.check_forward_input(input)
         if self.hx is None:
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
-        # self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
+        self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
 
-        if input.ndim == 1:
-            input = input.unsqueeze(1).unsqueeze(1)
-        if input.ndim == 2:
-            if input.size(0) > 1 and no_chunk:
-                # for now change on warining
-                input = input.unsqueeze(1)
-            else:
-                if input.size(0) > 1:
-                    print(f'ojojoj a.k.a. WARNING bitch: {input.size()}')
-                self._forward(input)
+        self.map_and_activate(input)
         if input.ndim == 3:
             for i in range(input.size(0)):
-                self._forward(input[i])
+                self.map_and_activate(input[i])
 
         return self.hx
 
-    def _forward(self, input: Tensor):
+    def map_and_activate(self, input: Tensor):
         pre_activation = M.linear(
             input, self.hx,
             self.weight_ih, self.weight_hh,
@@ -158,7 +154,12 @@ class DeepESNCell(nn.Module):
         self.include_input = include_input
         self.gpu_enabled = False
 
-    def forward(self, input: Tensor) -> Tensor:
+    def forward(self, input: Tensor, washout=0) -> Tensor:
+        if washout > 0:
+            self._forward(input[:washout])
+        return self._forward(input[washout:])
+
+    def _forward(self, input: Tensor) -> Tensor:
         size = sum([cell.hidden_size for cell in self.layers])
         if self.include_input:
             size += self.input_size
@@ -166,7 +167,7 @@ class DeepESNCell(nn.Module):
         result = torch.empty((input.size(0), size), device=input.device)
 
         for i in range(input.size(0)):
-            cell_input = input[i]
+            cell_input = input[i:i+1]
             new_hidden_states = []
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
@@ -181,12 +182,6 @@ class DeepESNCell(nn.Module):
 
         return result
 
-    def washout(self, input: Tensor):
-        for i in range(input.size(0)):
-            cell_input = input[i]
-            for esn_cell in self.layers:
-                cell_input = esn_cell(cell_input)
-
     def get_hidden_size(self):
         return sum([l.hidden_size for l in self.layers])
 
@@ -198,121 +193,6 @@ class DeepESNCell(nn.Module):
         for layer in self.layers:
             layer.to('cuda')
         self.gpu_enabled = True
-
-
-class GroupedESNCell(ESNCellBase):
-    def __init__(self, input_size: int, hidden_size: int, groups: int, activation='default', bias: bool = False,
-                 initializer: WeightInitializer = WeightInitializer(), num_chunks: int = 1,
-                 requires_grad: bool = False, leaky_rate=1.0, include_input: bool = False, act_radius=100,
-                 act_grow='decr'):
-        super(GroupedESNCell, self).__init__(input_size, hidden_size, bias, initializer=initializer,
-                                             num_chunks=num_chunks,
-                                             requires_grad=requires_grad, init=False)
-        self.groups = groups
-        self.init_parameters()
-        self.requires_grad = requires_grad
-        if activation == 'default':
-            self.activation = [
-                A.self_normalizing_default(leaky_rate=leaky_rate * ((groups - i) / groups), spectral_radius=act_radius)
-                for i in
-                range(groups)]
-        elif activation == 'default_act':
-            acts = [act_radius * ((groups - i) / groups) for i in range(groups)]
-            if act_grow == 'incr':
-                acts.reverse()
-            self.activation = [A.self_normalizing_default(leaky_rate=leaky_rate, spectral_radius=radius) for radius in
-                               acts]
-        elif activation == 'default_tanh':
-            self.activation = [A.tanh(leaky_rate=leaky_rate * ((groups - i) / groups)) for i in
-                               range(groups)]
-        elif type(activation) != list:
-            self.activation = [activation] * groups
-        else:
-            self.activation = activation
-        self.hx = None
-        self.include_input = include_input
-
-    def init_parameters(self):
-        # todo  change to register params and receive just size?
-        # todo chunks, what about chunks
-        self.weight_ih = nn.Parameter(
-            data=self.initializer.init_weight_ih(
-                weight=torch.Tensor(self.hidden_size, self.input_size),
-            ),
-            requires_grad=self.requires_grad
-        )
-
-        self.weight_hh = [nn.Parameter(
-            data=self.initializer.init_weight_hh(
-                weight=torch.Tensor(self.hidden_size, self.hidden_size),
-            ),
-            requires_grad=self.requires_grad
-        ) for _ in range(self.groups)]
-
-        if self.bias:
-            self.bias_ih = nn.Parameter(
-                data=self.initializer.init_bias_ih(
-                    bias=torch.Tensor(self.hidden_size),
-                ),
-                requires_grad=self.requires_grad
-            )
-            self.bias_hh = [nn.Parameter(
-                data=self.initializer.init_bias_hh(
-                    bias=torch.Tensor(self.hidden_size),
-                ),
-                requires_grad=self.requires_grad
-            ) for _ in range(self.groups)]
-        else:
-            self.bias_hh = [None] * self.groups
-
-    def forward(self, input: Tensor) -> Tensor:
-        size = self.hidden_size * self.groups
-        if self.include_input:
-            size += self.input_size
-
-        if self.hx is None:
-            self.hx = [torch.zeros(self.input_size, self.hidden_size, dtype=input.dtype, device=input.device,
-                                   requires_grad=self.requires_grad) for _ in
-                       range(self.groups)]  # todo na pewno self.input_size?
-
-        result = torch.empty((input.size(0), size), device=input.device)
-
-        for i in range(input.size(0)):
-            cell_input = input[i]
-            new_hidden_states = []
-            for layer_num in range(self.groups):
-                new_state = self._forward(cell_input, layer_num)
-                new_hidden_states.append(new_state)
-            if self.include_input:
-                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
-            else:
-                result[i, :] = torch.cat(new_hidden_states, axis=1)
-
-        if self.include_input:
-            result[:, -self.input_size:] = input.view(input.size(0), -1)
-        return result
-
-    def _forward(self, input: Tensor, layer_num: int):
-        pre_activation = M.linear(
-            input, self.hx[layer_num],
-            self.weight_ih, self.weight_hh[layer_num],
-            self.bias_ih, self.bias_hh[layer_num],
-        )
-
-        self.hx[layer_num] = self.activation[layer_num](pre_activation, prev_state=self.hx[layer_num])
-        return self.hx[layer_num]
-
-    def reset_hidden(self):
-        self.hx = None
-
-    def washout(self, input: Tensor):
-        if self.hx is None:
-            self.hx = [torch.zeros(self.input_size, self.hidden_size, dtype=input.dtype, device=input.device,
-                                   requires_grad=self.requires_grad) for _ in range(self.groups)]
-        for i in range(input.size(0)):
-            cell_input = input[i]
-            for layer_num in range(self.groups):
-                self._forward(cell_input, layer_num)
 
 
 class GroupOfESNCell(nn.Module):
@@ -340,15 +220,20 @@ class GroupOfESNCell(nn.Module):
         self.include_input = include_input
         self.gpu_enabled = False
 
-    def forward(self, input: Tensor) -> Tensor:
-        size = sum([cell.get_hidden_size() for cell in self.groups])
+    def forward(self, input: Tensor, washout=0) -> Tensor:
+        if washout > 0:
+            self._forward(input[:washout])
+        return self._forward(input[washout:])
+
+    def _forward(self, input: Tensor) -> Tensor:
+        size = self.get_hidden_size()
         if self.include_input:
             size += self.input_size
 
         result = torch.empty((input.size(0), size), device=input.device)
 
         for i in range(input.size(0)):
-            cell_input = input[i]
+            cell_input = input[i:i+1]
             new_hidden_states = []
 
             for esn_cell in self.groups:
@@ -365,8 +250,9 @@ class GroupOfESNCell(nn.Module):
 
         return result
 
-    def washout(self, input: Tensor):
-        for i in range(input.size(0)):
-            cell_input = input[i]
-            for esn_cell in self.groups:
-                esn_cell(cell_input)
+    def reset_hidden(self):
+        for group in self.groups:
+            group.reset_hidden()
+
+    def get_hidden_size(self):
+        return sum([cell.get_hidden_size() for cell in self.groups])
