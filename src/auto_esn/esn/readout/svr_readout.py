@@ -11,7 +11,9 @@ class SVDReadout(nn.Module):
     def forward(self, input: Tensor) -> Tensor:
         return self.readout(input)
 
-    def fit(self, input: Tensor, target: Tensor):
+    def fit(self, input: Tensor, target: Tensor, washout=0):
+        if washout > 0:
+            target = target[washout:]
         X = torch.ones(input.size(0), 1 + input.size(1), device=target.device)
         X[:, :-1] = input
         W = self._solve_svd(X, target, self.regularization)
@@ -20,7 +22,6 @@ class SVDReadout(nn.Module):
 
     def _solve_svd(self, X: Tensor, y: Tensor, alpha: float) -> Tensor:
         # implementation taken from scikit-learn
-        y = y[:, 0, :]  # ignore batch
         U, s, V = torch.svd(X)
         idx = s > 1e-15  # same default value as scipy.linalg.pinv
         s_nnz = s[idx][:, None]

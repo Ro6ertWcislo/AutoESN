@@ -35,7 +35,7 @@ if norm:
 else:
     output = esn(X_test)
 print(time.time()-start)
-n = nrmse(output.unsqueeze(-1), y_test).item()
+n = nrmse(output, y_test).item()
 print(n)
 last = 50
 plt.plot(range(last), output.view(-1).detach().numpy()[-last:], 'r')

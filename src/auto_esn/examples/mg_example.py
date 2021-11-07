@@ -52,7 +52,7 @@ esn.fit(X, y)
 output = esn(X_test)
 
 # evaluate
-n = nrmse(output.unsqueeze(-1), y_test).item()
+n = nrmse(output, y_test).item()
 print(n)
 
 # plot

@@ -49,10 +49,12 @@ class AutoNNReadout(nn.Module):
     def forward(self, input: Tensor) -> Tensor:
         return self.model(input)
 
-    def fit(self, X: Tensor, y: Tensor):
+    def fit(self, X: Tensor, y: Tensor, washout=0):
         if X.ndim == 2:
             X = X.unsqueeze(0)
-        y = y.reshape(1, -1, 1)
+            y = y.unsqueeze(0)
+        if washout >0:
+            y = y[:, washout:, :]
         for t in range(self.epochs):
             # Forward pass: Compute predicted y by passing x to the model
             y_pred = self.model(X)
