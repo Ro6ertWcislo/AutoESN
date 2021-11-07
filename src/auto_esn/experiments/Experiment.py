@@ -3,19 +3,16 @@ import csv
 import logging
 import os
 import time
-from collections import Iterator, defaultdict
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Dict, Callable, Any, List, Tuple, Optional, Generator
+from typing import Dict, Callable, Any, List, Tuple, Generator
 
 import numpy as np
 
 from auto_esn.Experiment import Dataset
-from auto_esn.esn.esn import ESNBase, DeepESN, GroupedDeepESN
-from auto_esn.esn.reservoir.activation import self_normalizing_default, Activation
-from auto_esn.esn.reservoir.initialization import WeightInitializer, CompositeInitializer
-from auto_esn.esn.reservoir.util import NRMSELoss
-from auto_esn.utils.dataset_loader import norm_loader__, loader_val_test, norm_loader_val_test_
-from auto_esn.utils.types import Initializer
+from auto_esn.esn.esn import ESNBase
+from auto_esn.esn.reservoir.activation import Activation
+from auto_esn.esn.reservoir.initialization import WeightInitializer
 
 SeedGenerator = Callable[[], int]
 
@@ -132,7 +129,6 @@ class ESNModelGenerator(ModelGenerator):
                  activation_parameter_space: Dict[str, Parameter],
                  generator_provider: GeneratorProvider,
                  seed_generator: Generator[int, Any, None] = default_seed_generator):
-
         self.model_class = model_class
         self.model_parameter_space = model_parameter_space
         self.initialization_fun = initialization_fun
@@ -167,9 +163,6 @@ class ESNModelGenerator(ModelGenerator):
 
     def _filter_dict_by_keys(self, origin: Dict[Any, Any], mask: [Any, Any]):
         return dict(filter(lambda key_val: key_val[0] in mask, origin.items()))
-
-
-
 
 
 class Experiment:
@@ -272,4 +265,3 @@ class Experiment:
             with open(destination_path, mode='a+') as csv_result:
                 csv_writer = csv.writer(csv_result, delimiter=';', quotechar='"', quoting=csv.QUOTE_MINIMAL)
                 csv_writer.writerow(values)
-
