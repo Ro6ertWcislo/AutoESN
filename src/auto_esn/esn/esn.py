@@ -73,7 +73,8 @@ class GroupedDeepESN(ESNBase):
     def __init__(self, input_size: int = 1, hidden_size: int = 250, output_dim: int = 1, bias: bool = False,
                  initializer: WeightInitializer = WeightInitializer(), groups=2, num_layers=(2, 2),
                  activation: Activation = A.self_normalizing_default(), transient: int = 30,
-                 regularization: float = 1.):
+                 regularization: float = 1., network_size=None):
+        hidden_size = hidden_size if network_size is None else network_size // sum(num_layers)
         super().__init__(
             reservoir=MultiTimeSeriesHandler(
                 GroupOfESNCell(input_size, hidden_size, [
