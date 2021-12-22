@@ -250,13 +250,37 @@ def _spectral_noisy(spectral_radius=0.9, noise_magnitude=0.2) -> Initializer:
     return __spectral_noisy
 
 
+def circular_generator(list_of_kwargs):
+    div = len(list_of_kwargs)
+    counter = -1
+    while True:
+        counter+=1
+        yield list_of_kwargs[counter%div]
+
+
+def _generator(func, list_of_kwargs):
+    gen = circular_generator(list_of_kwargs)
+
+    def __generator(weight: Tensor) -> Tensor:
+        kwargs = next(gen)
+        actual_fun = func(**kwargs)
+        return actual_fun(weight)
+
+    return __generator
+
+
 class CompositeInitializer(object):
     def __init__(self):
         self.initializers: List[Initializer, ...] = []
 
+    def generator(self, func, list_of_kwargs):
+        self.initializers.append(_generator(func,list_of_kwargs))
+        return self
+
     def scale(self, factor: float = 1.0):
         self.initializers.append(_scale(factor=factor))
         return self
+
 
     def spectral_normalize(self):
         self.initializers.append(_spectral_normalize())

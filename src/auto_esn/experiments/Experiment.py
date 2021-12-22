@@ -205,11 +205,11 @@ class Experiment:
                         if output_test is not None:
                             output_test = output_test + dataset.baseline
                             y_test = y_test + dataset.baseline
-                    val_score = self.metric(output_val.unsqueeze(-1), y_val).item()
+                    val_score = self.metric(output_val, y_val).item()
                     val_scores[dataset.name].append(val_score)
 
                     if output_test is not None:
-                        test_score = self.metric(output_test.unsqueeze(-1), y_test).item()
+                        test_score = self.metric(output_test, y_test).item()
                         test_scores[dataset.name].append(test_score)
                     else:
                         test_score = None
