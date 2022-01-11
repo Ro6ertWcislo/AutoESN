@@ -16,6 +16,14 @@ def NRMSELoss():
 
     return _NRMSELoss
 
+def R2_score():
+    def _R2_score(yhat, y: Tensor):
+        var = torch.sum((y - torch.mean(y)) ** 2)
+        residuals_sq = torch.sum((y - yhat) ** 2)
+
+        return 1 - residuals_sq / var
+
+    return _R2_score
 def NRMSELossMG():
     def _NRMSELossMG(yhat, y):
         res = yhat - y
