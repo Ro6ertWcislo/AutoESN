@@ -53,8 +53,26 @@ def load_train_test2(pathOrDf: Union[str, pd.DataFrame], p: int, max_samples: in
     y = torch.from_numpy(y).to(device)
 
     return X[:-p], X[-p:], y[:-p], y[-p:]
+def load_train_test_val_test_shift(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples =-1, shift: int = 10) -> \
+Tuple[
+    torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    data = (pd.read_csv(pathOrDf)['y'] if isinstance(pathOrDf, str) else pathOrDf).values
+    data = np.array(data, dtype=np.float64)
+    if max_samples != -1:
+        max_samples +=shift
 
+    X = data.reshape((-1, 1))[shift-1:max_samples+shift if max_samples!=-1 else -1]
+    X = torch.from_numpy(X).to(device)
+    y = data.reshape((-1, 1))[:max_samples if max_samples!=-1 else -shift]
+    y = torch.from_numpy(y).to(device)
 
+    if type(val_size) == float:
+        val_size = int(val_size * X.size(0))
+    if type(test_size) == float:
+        test_size = int(test_size * X.size(0))
+
+    return X[:-(val_size + test_size)], X[-(val_size + test_size):-test_size], X[-test_size:], y[:-(
+            val_size + test_size)], y[-(val_size + test_size):-test_size], y[-test_size:]
 def load_train_test_val_test(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples: int = -1) -> \
 Tuple[
     torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
@@ -119,6 +137,12 @@ def loader_explicit(pathOrDf: Union[str, pd.DataFrame], test_size: int, max_samp
 def loader_val_test(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples: int = -1) -> Callable:
     def loader_():
         return load_train_test_val_test(pathOrDf, val_size, test_size, max_samples)
+
+    return loader_
+
+def loader_val_test_shift(pathOrDf: Union[str, pd.DataFrame], val_size=0.1, test_size=0.1, max_samples=-1,shift: int = 10) -> Callable:
+    def loader_():
+        return load_train_test_val_test_shift(pathOrDf, val_size, test_size,max_samples, shift)
 
     return loader_
 
