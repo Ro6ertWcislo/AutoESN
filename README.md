@@ -1,4 +1,4 @@
-This is the repository connected to the paper "Grouped Multi-Layer Echo State Networks with Self-Normalizing Activations". Below, we present additional information and experiments that were performed.
+This is the repository connected to the paper ["Grouped Multi-Layer Echo State Networks with Self-Normalizing Activations"](https://www.springerprofessional.de/grouped-multi-layer-echo-state-networks-with-self-normalizing-ac/19248614) (pdf available [here](https://www.iccs-meeting.org/archive/iccs2021/papers/127420093.pdf)). Below, we present additional information and experiments that were performed.
 
 - [Usage](#usage)
 - [Architecture overview](#architecture-overview)
