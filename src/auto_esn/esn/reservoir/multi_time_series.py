@@ -23,3 +23,6 @@ class MultiTimeSeriesHandler(nn.Module):
             return result
         else:
             raise ValueError(f"Only Matrices of dim 2 and 3 are supported but dim {len(tensor_size)} was passed.")
+    
+    def to_cuda(self):
+        self.esn_cell.to_cuda()
