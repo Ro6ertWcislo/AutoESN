@@ -129,7 +129,10 @@ class ESNCell(ESNCellBase):
 
     def reset_hidden(self):
         self.hx = None
-
+    
+    def to_cuda(self):
+        self.to('cuda')
+        self.gpu_enabled = True
 
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=False,
@@ -256,3 +259,8 @@ class GroupOfESNCell(nn.Module):
 
     def get_hidden_size(self):
         return sum([cell.get_hidden_size() for cell in self.groups])
+    
+    def to_cuda(self):
+        for group in self.groups:
+            group.to('cuda')
+        self.gpu_enabled = True
