@@ -1,9 +1,11 @@
+import torch
 from matplotlib import pyplot as plt
 
 import auto_esn.utils.dataset_loader as dl
 from auto_esn.datasets.df import MackeyGlass
-from auto_esn.esn.esn import GroupedDeepESN
+from auto_esn.esn.esn import GroupedDeepESN, DummyTreeESN
 from auto_esn.esn.reservoir.activation import self_normalizing_default
+from auto_esn.esn.reservoir.cell import DummyTreeCell
 from auto_esn.esn.reservoir.initialization import CompositeInitializer, WeightInitializer
 from auto_esn.esn.reservoir.util import NRMSELoss
 
@@ -13,7 +15,12 @@ nrmse = NRMSELoss()
 
 X, X_test, y, y_test = mg17clean()
 
-# example complex usage of initialization method
+print(f"Size of X: {X.shape}, X_test: {X_test.shape}")### CHANGE
+X = torch.cat((X,X),dim=1)   ### CHANGE
+X_test = torch.cat((X_test,X_test),dim=1)### CHANGE
+print(f"Size of doubled X: {X.shape}, X_test: {X_test.shape}")### CHANGE
+
+
 def regular_graph_initializer(seed, degree):
     # initialize input weights with uniform distribution from -1 to 1 and specified seed to reproduce results
     input_weight =CompositeInitializer().with_seed(seed).uniform()
@@ -38,6 +45,7 @@ activation = self_normalizing_default(leaky_rate=1.0, spectral_radius=500)
 
 # initialize the esn
 esn = GroupedDeepESN(
+    input_size=2, ### CHANGE
     groups=4,                   # choose number of groups
     num_layers=(1, 2, 3, 4),    # choose number of layers for each group
     hidden_size=80,             # choose hidden size for all reservoirs
@@ -45,7 +53,7 @@ esn = GroupedDeepESN(
     activation=activation       # assign activation
 )
 
-# fit
+#fit
 esn.fit(X, y)
 
 # predict
