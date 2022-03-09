@@ -3,9 +3,8 @@ from matplotlib import pyplot as plt
 
 import auto_esn.utils.dataset_loader as dl
 from auto_esn.datasets.df import MackeyGlass
-from auto_esn.esn.esn import GroupedDeepESN, DummyTreeESN
+from auto_esn.esn.esn import GroupedDeepESN
 from auto_esn.esn.reservoir.activation import self_normalizing_default
-from auto_esn.esn.reservoir.cell import DummyTreeCell
 from auto_esn.esn.reservoir.initialization import CompositeInitializer, WeightInitializer
 from auto_esn.esn.reservoir.util import NRMSELoss
 
@@ -20,7 +19,7 @@ X = torch.cat((X,X),dim=1)   ### CHANGE
 X_test = torch.cat((X_test,X_test),dim=1)### CHANGE
 print(f"Size of doubled X: {X.shape}, X_test: {X_test.shape}")### CHANGE
 
-
+# example complex usage of initialization method
 def regular_graph_initializer(seed, degree):
     # initialize input weights with uniform distribution from -1 to 1 and specified seed to reproduce results
     input_weight =CompositeInitializer().with_seed(seed).uniform()
@@ -53,7 +52,7 @@ esn = GroupedDeepESN(
     activation=activation       # assign activation
 )
 
-#fit
+# fit
 esn.fit(X, y)
 
 # predict
