@@ -1,3 +1,4 @@
+import torch
 from matplotlib import pyplot as plt
 
 import auto_esn.utils.dataset_loader as dl
@@ -12,6 +13,13 @@ mg17clean = dl.loader_explicit(MackeyGlass, test_size=400)
 nrmse = NRMSELoss()
 
 X, X_test, y, y_test = mg17clean()
+
+print(f"Size of X: {X.shape}, X_test: {X_test.shape}")
+X = torch.cat((X,X-1),dim=1)   
+y = torch.cat((y,y-1),dim=1)   
+X_test = torch.cat((X_test,X_test-1),dim=1)
+y_test = torch.cat((y_test,y_test-1),dim=1)
+print(f"Size of doubled X: {X.shape}, X_test: {X_test.shape}")
 
 # example complex usage of initialization method
 def regular_graph_initializer(seed, degree):
@@ -38,11 +46,13 @@ activation = self_normalizing_default(leaky_rate=1.0, spectral_radius=500)
 
 # initialize the esn
 esn = GroupedDeepESN(
+    input_size=2, 
     groups=4,                   # choose number of groups
     num_layers=(1, 2, 3, 4),    # choose number of layers for each group
     hidden_size=80,             # choose hidden size for all reservoirs
     initializer=regular_graph_initializer(seed=3, degree=6),  # choose 6-regular graph as reservoir structure
-    activation=activation       # assign activation
+    activation=activation,       # assign activation
+    output_dim=2 
 )
 
 # fit
@@ -50,6 +60,8 @@ esn.fit(X, y)
 
 # predict
 output = esn(X_test)
+print(f"Shape of output: {output.shape}")
+
 
 # evaluate
 n = nrmse(output, y_test).item()
@@ -57,6 +69,8 @@ print(n)
 
 # plot
 last = 200
-plt.plot(range(last), output.view(-1).detach().numpy()[-last:], 'r')
-plt.plot(range(last), y_test.view(-1).detach().numpy()[-last:], 'b')
+plt.plot(range(last), output[:,0].view(-1).detach().numpy()[-last:], 'r')
+plt.plot(range(last), output[:,1].view(-1).detach().numpy()[-last:], 'r')
+plt.plot(range(last), y_test[:,0].view(-1).detach().numpy()[-last:], 'b')
+plt.plot(range(last), y_test[:,1].view(-1).detach().numpy()[-last:], 'b')
 plt.show()
