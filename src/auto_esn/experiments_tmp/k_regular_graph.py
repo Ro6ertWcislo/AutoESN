@@ -34,7 +34,7 @@ if __name__ == '__main__':
             "bias": Just(False),
             "num_layers": Just([1]),
             "groups": Just(1),
-            "transient": Just(100),
+            "washout": Just(100),
             "hidden_size": Just(1000),
 
         },
