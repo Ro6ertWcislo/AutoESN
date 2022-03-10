@@ -5,7 +5,7 @@ from auto_esn.esn.esn import GroupedDeepESN
 from auto_esn.esn.reservoir.activation import self_normalizing_default
 from auto_esn.esn.reservoir.initialization import WeightInitializer, CompositeInitializer
 from auto_esn.esn.reservoir.util import NRMSELoss
-from auto_esn.experiments.Experiment import Experiment, default_seed_generator, GridSearchGeneratorProvider, OneOf, \
+from auto_esn.experiment.Experiment import Experiment, default_seed_generator, GridSearchGeneratorProvider, OneOf, \
     Just, ESNModelGenerator
 
 if __name__ == '__main__':
