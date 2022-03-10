@@ -9,10 +9,10 @@ from typing import Dict, Callable, Any, List, Tuple, Generator
 
 import numpy as np
 
-from auto_esn.Experiment import Dataset
 from auto_esn.esn.esn import ESNBase
 from auto_esn.esn.reservoir.activation import Activation
 from auto_esn.esn.reservoir.initialization import WeightInitializer
+from auto_esn.experiment.util import Dataset
 
 SeedGenerator = Callable[[], int]
 
