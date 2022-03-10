@@ -25,15 +25,22 @@ def relu(leaky_rate: float = 1.0) -> Activation:
     return Activation(activation_function=torch.relu, leaky_rate=leaky_rate)
 
 
-def linear(leaky_rate: float = 1.0) -> Activation:
-    def id(input: Tensor) -> Tensor:
+class Identity:
+    def __call__(self, input: Tensor):
         return input
 
-    return Activation(activation_function=id, leaky_rate=leaky_rate)
+
+def linear(leaky_rate: float = 1.0) -> Activation:
+    return Activation(activation_function=Identity(), leaky_rate=leaky_rate)
+
+
+class SelfNorm:
+    def __init__(self, spectral_radius: float = 100.0):
+        self.spectral_radius = spectral_radius
+
+    def __call__(self, input: Tensor):
+        return self.spectral_radius * (input / torch.norm(input))
 
 
 def self_normalizing_default(leaky_rate: float = 0.9, spectral_radius: float = 100.0) -> Activation:
-    def activation_function(input: Tensor) -> Tensor:
-        return spectral_radius * (input / torch.norm(input))
-
-    return Activation(activation_function=activation_function, leaky_rate=leaky_rate)
+    return Activation(activation_function=SelfNorm(spectral_radius), leaky_rate=leaky_rate)
