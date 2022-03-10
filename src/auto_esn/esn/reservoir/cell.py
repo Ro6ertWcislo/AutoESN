@@ -22,10 +22,9 @@ class ESNCellBase(nn.Module):
         self.hidden_size = hidden_size
         self.requires_grad = requires_grad
         self.bias = bias
-        self.initializer = initializer
         self.weight_ih, self.weight_hh, self.bias_ih, self.bias_hh = None, None, None, None
         if init:
-            self.init_parameters()
+            self.init_parameters(initializer)
 
     def extra_repr(self):
         s = '{input_size}, {hidden_size}'
@@ -42,7 +41,7 @@ class ESNCellBase(nn.Module):
                     input.size(1), self.input_size))
 
     def check_forward_hidden(self, input: Tensor, hx: Tensor, hidden_label: str = ''):
-        if input.size(0) != hx.size(0): # todo add batch size??
+        if input.size(0) != hx.size(0):  # todo add batch size??
             raise RuntimeError(
                 "Input batch size {} doesn't match hidden {}".format(
                     input.size(0), hidden_label))
@@ -55,18 +54,16 @@ class ESNCellBase(nn.Module):
     def get_hidden_size(self):
         return self.hidden_size
 
-    def init_parameters(self):
-        # todo  change to register params and receive just size?
-        # todo chunks, what about chunks
+    def init_parameters(self, initializer: WeightInitializer):
         self.weight_ih = nn.Parameter(
-            data=self.initializer.init_weight_ih(
+            data=initializer.init_weight_ih(
                 weight=torch.Tensor(self.hidden_size, self.input_size),
             ),
             requires_grad=self.requires_grad
         )
 
         self.weight_hh = nn.Parameter(
-            data=self.initializer.init_weight_hh(
+            data=initializer.init_weight_hh(
                 weight=torch.Tensor(self.hidden_size, self.hidden_size),
             ),
             requires_grad=self.requires_grad
@@ -74,13 +71,13 @@ class ESNCellBase(nn.Module):
 
         if self.bias:
             self.bias_ih = nn.Parameter(
-                data=self.initializer.init_bias_ih(
+                data=initializer.init_bias_ih(
                     bias=torch.Tensor(self.hidden_size),
                 ),
                 requires_grad=self.requires_grad
             )
             self.bias_hh = nn.Parameter(
-                data=self.initializer.init_bias_hh(
+                data=initializer.init_bias_hh(
                     bias=torch.Tensor(self.hidden_size),
                 ),
                 requires_grad=self.requires_grad
@@ -109,7 +106,7 @@ class ESNCell(ESNCellBase):
         if self.hx is None:
             self.hx = torch.zeros(input.size(0), self.hidden_size, dtype=input.dtype, device=input.device,
                                   requires_grad=self.requires_grad)
-        self.check_forward_hidden(input, self.hx, '') # todo handle both cases below
+        self.check_forward_hidden(input, self.hx, '')
 
         self.map_and_activate(input)
         if input.ndim == 3:
@@ -129,32 +126,26 @@ class ESNCell(ESNCellBase):
 
     def reset_hidden(self):
         self.hx = None
-    
+
     def to_cuda(self):
         self.to('cuda')
         self.gpu_enabled = True
 
+
 class DeepESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, bias=False,
                  initializer: WeightInitializer = WeightInitializer(), num_layers: int = 1,
-                 activation: Activation = 'default', include_input=False):
+                 activation: Activation = 'default'):
         super().__init__()
         if type(activation) != list:
-            self.activation = [activation] * num_layers
+            activation = [activation] * num_layers
         else:
-            self.activation = activation
+            activation = activation
 
-        self.layers = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[0])]
+        self.layers = [ESNCell(input_size, hidden_size, bias, initializer, activation[0])]
         if num_layers > 1:
-            self.layers += [ESNCell(hidden_size, hidden_size, bias, initializer, self.activation[i]) for i in
+            self.layers += [ESNCell(hidden_size, hidden_size, bias, initializer, activation[i]) for i in
                             range(1, num_layers)]
-
-        self.input_size = input_size
-        self.hidden_size = hidden_size
-        self.bias = bias
-        self.initializer = initializer
-        self.activation = activation
-        self.include_input = include_input
         self.gpu_enabled = False
 
     def forward(self, input: Tensor, washout=0) -> Tensor:
@@ -164,24 +155,15 @@ class DeepESNCell(nn.Module):
 
     def _forward(self, input: Tensor) -> Tensor:
         size = sum([cell.hidden_size for cell in self.layers])
-        if self.include_input:
-            size += self.input_size
-
         result = torch.empty((input.size(0), size), device=input.device)
 
         for i in range(input.size(0)):
-            cell_input = input[i:i+1]
+            cell_input = input[i:i + 1]
             new_hidden_states = []
             for esn_cell in self.layers:
                 cell_input = esn_cell(cell_input)
                 new_hidden_states.append(cell_input)
-            if self.include_input:
-                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
-            else:
-                result[i, :] = torch.cat(new_hidden_states, axis=1)
-
-        if self.include_input:
-            result[:, -self.input_size:] = input.view(input.size(0), -1)
+            result[i, :] = torch.cat(new_hidden_states, axis=1)
 
         return result
 
@@ -200,27 +182,20 @@ class DeepESNCell(nn.Module):
 
 class GroupOfESNCell(nn.Module):
     def __init__(self, input_size: int, hidden_size: int, groups, activation=A.self_normalizing_default(),
-                 bias: bool = False,
-                 initializer: WeightInitializer = WeightInitializer(), include_input: bool = False,
-                 requires_grad: bool = False):
+                 bias: bool = False, initializer: WeightInitializer = WeightInitializer()):
         super(GroupOfESNCell, self).__init__()
-        self.requires_grad = requires_grad
         num_groups = groups if type(groups) == int else len(groups)
         if type(activation) != list:
-            self.activation = [activation] * num_groups
+            activation = [activation] * num_groups
         else:
-            self.activation = activation
+            activation = activation
         if type(groups) != int:
             self.groups = groups
         else:
-            self.groups = [ESNCell(input_size, hidden_size, bias, initializer, self.activation[i]) for i in
+            self.groups = [ESNCell(input_size, hidden_size, bias, initializer, activation[i]) for i in
                            range(groups)]
 
-        self.input_size = input_size
         self.hidden_size = hidden_size
-        self.bias = bias
-        self.initializer = initializer
-        self.include_input = include_input
         self.gpu_enabled = False
 
     def forward(self, input: Tensor, washout=0) -> Tensor:
@@ -230,26 +205,17 @@ class GroupOfESNCell(nn.Module):
 
     def _forward(self, input: Tensor) -> Tensor:
         size = self.get_hidden_size()
-        if self.include_input:
-            size += self.input_size
-
         result = torch.empty((input.size(0), size), device=input.device)
 
         for i in range(input.size(0)):
-            cell_input = input[i:i+1]
+            cell_input = input[i:i + 1]
             new_hidden_states = []
 
             for esn_cell in self.groups:
                 new_state = esn_cell(cell_input)
                 new_hidden_states.append(new_state)
 
-            if self.include_input:
-                result[i, :-self.input_size] = torch.cat(new_hidden_states, axis=1)
-            else:
-                result[i, :] = torch.cat(new_hidden_states, axis=1)
-
-        if self.include_input:
-            result[:, -self.input_size:] = input.view(input.size(0), -1)
+            result[i, :] = torch.cat(new_hidden_states, axis=1)
 
         return result
 
@@ -259,7 +225,7 @@ class GroupOfESNCell(nn.Module):
 
     def get_hidden_size(self):
         return sum([cell.get_hidden_size() for cell in self.groups])
-    
+
     def to_cuda(self):
         for group in self.groups:
             group.to('cuda')
