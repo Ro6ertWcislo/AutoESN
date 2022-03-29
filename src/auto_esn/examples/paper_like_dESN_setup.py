@@ -51,7 +51,7 @@ for seed in [i for i in range(6, 128, 7)]:
         activation=activation,
         initializer=best_deepesn_initializer(seed),
         regularization=0.5,
-        transient=100
+        washout=100
     )
 
     # fit
