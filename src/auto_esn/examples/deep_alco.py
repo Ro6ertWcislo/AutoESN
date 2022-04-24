@@ -55,24 +55,9 @@ num_layers = 3
 regularization = 1
 radius = 0.9
 input_scaling = 0.9
-#initializer = initialization.WeightInitializer(radius=radius, input_scaling=input_scaling)
-initializer = initialization.CustomWeightInitializer(radius=radius, input_scaling=input_scaling)
+initializer = initialization.WeightInitializer(radius=radius, input_scaling=input_scaling)
 batch_size = 32
 learning_rate = 1e-5
-
-# # PREPARE HYPER-PARAMETERS
-# leaky_rate = float(sys.argv[1])
-# activation = activation.tanh(leaky_rate)
-# hidden_size = int(sys.argv[2])
-# num_layers = int(sys.argv[3])
-# regularization = 1
-# radius = float(sys.argv[4])
-# input_scaling = float(sys.argv[5])
-# initializer = initialization.WeightInitializer(radius=radius, input_scaling=input_scaling)
-# batch_size = int(sys.argv[6])
-# learning_rate = 1e-5
-
-print(f"{leaky_rate}, {hidden_size}, {num_layers}, {radius}, {input_scaling}, {batch_size}")
 
 # PREPARE ESN MODEL
 esn = FlexDeepESN(
