@@ -30,16 +30,12 @@ def create_dataloader(X, y, batch_size):
     return loader
 
 # LOADING DATA
-with open(r"D:\program_files_d\python\master\notebooks\dataset\alco_dataset/balanced_dataset.p", 'rb') as file:
-    data = pickle.load(file)
+X_1 = np.ones((100, 256, 64))
+X_0 = np.zeros((100, 256, 64))
+y_1 = np.ones((100, ))
+y_0 = np.zeros((100, ))
+X, y = np.concatenate([X_0, X_1]), np.concatenate([y_0, y_1])
 
-# LOADING DATA...
-X = data['X']
-y = data['y']
-
-
-count_val = [i[0] for i in y]
-print("ALL DATA: ", Counter(count_val))
 
 # SPLITTING DATA
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.33, random_state=42, shuffle=True)
